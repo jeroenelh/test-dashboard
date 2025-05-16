@@ -27,7 +27,6 @@ class HomeController extends Controller
             'Measurement report',
             '360 tour',
             'Video',
-            'EPA',
             'Measurement',
             'CAD Report',
             'Matterport',
