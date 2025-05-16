@@ -13,7 +13,8 @@
             <thead>
                 <tr>
                     <th>Datum</th>
-                    <th>Total</th>
+                    <th>Orders %</th>
+                    <th>Job %</th>
                     @foreach($products as $product)
                         <th style="text-align: right;">{{ $product }}</th>
                     @endforeach
@@ -25,6 +26,9 @@
                 <td>
                     <a style="color: black;" href="?date={{ $productionMetricsOfDate->first()->appointmentDate }}">{{ $productionMetricsOfDate->first()->appointmentDate }}</a>
                     <a style="color: black;" href="?date={{ $productionMetricsOfDate->first()->appointmentDate }}&missing=1">Problems</a>
+                </td>
+                <td>
+                    {{ round($orderStats[$productionMetricsOfDate->first()->appointmentDate]['completed'] / $orderStats[$productionMetricsOfDate->first()->appointmentDate]['total'] * 100,1) }}%
                 </td>
                 <td>
                     {{ round(($productionMetricsOfDate->where('isCompleted', true)->count() / $productionMetricsOfDate->count()) * 100,1) }}%

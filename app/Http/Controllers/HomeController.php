@@ -21,6 +21,19 @@ class HomeController extends Controller
             $productionMetricsDate = $productionMetricsDate->where('isCompleted', false);
         }
 
+        $orderStats = [];
+
+        $productionMetricsAll->groupBy('appointmentDate')->each(function ($jobsOfDate) use (&$orderStats) {
+            $orderStats[$jobsOfDate->first()->appointmentDate] = ['total' => 0, 'completed' => 0];
+            $jobsOfDate->groupBy('orderId')->each(function ($jobsOfOrder) use (&$orderStats) {
+                $orderStats[$jobsOfOrder->first()->appointmentDate]['total']++;
+
+                if ($jobsOfOrder->where('isCompleted', false)->count() === 0) {
+                    $orderStats[$jobsOfOrder->first()->appointmentDate]['completed']++;
+                }
+            });
+        });
+
         $products = [
             'Photography',
             'Floorplanner',
@@ -36,6 +49,7 @@ class HomeController extends Controller
             'productionMetricsDate',
             'products',
             'missing',
+            'orderStats',
         ));
     }
 }
