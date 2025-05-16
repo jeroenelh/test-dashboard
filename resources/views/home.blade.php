@@ -50,6 +50,7 @@
             <thead style="position: sticky; top: 0; ">
             <tr>
                 <th>Order ID</th>
+                <th>Search</th>
                 @foreach($products as $product)
                     <th style="text-align: center;">{{ $product }}</th>
                 @endforeach
@@ -62,6 +63,10 @@
                         <a href="https://zone.zibber.nl/orders/{{ $productionMetricsOfOrder->first()->orderId }}" target="_blank"  style="color: black;">
                             {{ $productionMetricsOfOrder->first()->orderId }}
                         </a>
+                    </td>
+                    <td>
+                        <a href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId%5BShort%20text%5D%22~{{ $productionMetricsOfOrder->first()->orderId }}" target="_blank">JOI</a>
+                        <a href="https://stream.bright-river.com/all/find/{{ $productionMetricsOfOrder->first()->orderId }}" target="_blank">STREAM</a>
                     </td>
                     @foreach($products as $product)
                         @php $production = $productionMetricsOfOrder->where('product', $product)->first(); @endphp
