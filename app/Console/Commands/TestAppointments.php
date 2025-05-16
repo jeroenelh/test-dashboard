@@ -78,7 +78,11 @@ class TestAppointments extends Command
                     $deliveryDate = $production->deliveries->max('created_at')->format('Y-m-d');
                 }
 
-                if ($production->status === 'cancelled' || $production->status === 'needsReturnAppointment') {
+                if (
+                    $production->status === 'cancelled' ||
+                    $production->status === 'needsReturnAppointment' ||
+                    $production->status === 'waitingOnClient'
+                ) {
                     return;
                 }
 
