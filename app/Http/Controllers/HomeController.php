@@ -43,6 +43,8 @@ class HomeController extends Controller
             'Measurement',
             'CAD Report',
             'Matterport',
+            'HouseQube',
+            'Social media video',
         ];
         return view('home', compact(
             'productionMetricsAll',
