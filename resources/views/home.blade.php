@@ -14,7 +14,7 @@
                 <tr>
                     <th>Datum</th>
                     <th>Orders %</th>
-                    <th>Job %</th>
+                    <th>Orders</th>
                     @foreach($products as $product)
                         <th style="text-align: right;">{{ $product }}</th>
                     @endforeach
@@ -22,7 +22,7 @@
             </thead>
             <tbody>
             @foreach($productionMetricsAll->groupBy('appointmentDate') as $productionMetricsOfDate)
-            <tr>
+            <tr style="@if((New \Carbon\Carbon())->subWeek()->format('Y-m-d') === $productionMetricsOfDate->first()->appointmentDate) border-top: 5px solid black; @endif">
                 <td>
                     <a style="color: black;" href="?date={{ $productionMetricsOfDate->first()->appointmentDate }}">{{ $productionMetricsOfDate->first()->appointmentDate }}</a>
                     <a style="color: black;" href="?date={{ $productionMetricsOfDate->first()->appointmentDate }}&missing=1">Problems</a>
@@ -31,6 +31,9 @@
                     {{ round($orderStats[$productionMetricsOfDate->first()->appointmentDate]['completed'] / $orderStats[$productionMetricsOfDate->first()->appointmentDate]['total'] * 100,1) }}%
                 </td>
                 <td>
+                    {{ $orderStats[$productionMetricsOfDate->first()->appointmentDate]['completed'] }} / {{ $orderStats[$productionMetricsOfDate->first()->appointmentDate]['total'] }}
+                </td>
+                <td style="display: none;">
                     {{ round(($productionMetricsOfDate->where('isCompleted', true)->count() / $productionMetricsOfDate->count()) * 100,1) }}%
                 </td>
                 @foreach($products as $product)
