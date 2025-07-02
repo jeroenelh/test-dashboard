@@ -54,7 +54,7 @@ class TestAppointments extends Command
 //        ];
 
         $appointments = Appointment::query()
-            ->where('scheduled_at', '>=', Carbon::parse('2025-05-01 00:00:00'))
+            ->where('scheduled_at', '>=', Carbon::now()->subDays(30))
             ->isCompleted()
             ->orderBy('scheduled_at', 'desc')
             ->with(['productions', 'productions.deliveries'])
