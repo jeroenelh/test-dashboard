@@ -224,7 +224,19 @@
 
     <!-- Filter bar -->
     <div class="fbar">
-
+        <div class="fg">
+            <span class="fl">Order</span>
+            <input class="tsearch" id="globalOrderSearch" type="text" placeholder="Search order ID..." style="width:160px" oninput="globalSearch(this.value)">
+        </div>
+        <div class="fdiv"></div>
+        <div class="fg">
+            <span class="fl">Chart</span>
+            <div style="display:flex;gap:4px">
+                <button class="lbtn active" id="periodDay" onclick="setPeriod('day')">Day</button>
+                <button class="lbtn" id="periodWeek" onclick="setPeriod('week')">Week</button>
+            </div>
+        </div>
+        <div class="fdiv"></div>
         <div class="fg" style="flex-wrap:wrap">
             <span class="fl">Product</span>
             <div class="chips" id="prodChips"></div>
@@ -260,7 +272,7 @@
         <div class="chart-grid">
             <div class="card">
                 <div class="ctitle">
-                    <span>Daily on-target % — <span id="monthLabelChart"></span></span>
+                    <span id="chartPeriodLabel">Daily on-target % — <span id="monthLabelChart"></span></span>
                     <div class="legend">
                         <span class="li"><span class="lsq" style="background:rgba(31,128,240,.2);border:1px solid rgba(31,128,240,.35)"></span>Order volume</span>
                         <span class="li"><span class="lline" style="background:var(--zb)"></span>Orders on target %</span>
@@ -572,7 +584,7 @@
     const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const MTD_MONTH = MONTH_NAMES[NOW.getMonth()];
 
-    // ─── REAL DATA — FTR = delivery_count == 1, LT = upload <= expected_delivery_date ──
+    // ─── REAL DATA — daily = current month only, weekly = all weeks ────────────
     let DAILY_RAW    = [];
     let WEEKLY_RAW   = [];
     let PRODUCTS_RAW = [];
@@ -607,6 +619,26 @@
         const t=CFG.target;
         return`<span class="b ${p>=t?'bg':p>=(t-10)?'ba':'br'}">${p.toFixed(1)}%</span>`;
     }
+    // Normalize a daily/weekly row — fill missing fields with 0 or fallback
+    function norm(r){
+        return {
+            d:        r.d||r.day||'',
+            day:      r.d||r.day||'',
+            week:     r.week||'',
+            label:    r.label||r.week||'',
+            ordTot:   r.ordTot||0,
+            ordDel:   r.ordDel||r.ordTot||0,
+            ordOn:    r.ordOn||0,
+            returns:  r.returns||0,
+            revisions:r.revisions||0,
+            prodTot:  r.prodTot||0,
+            prodDel:  r.prodDel||r.prodTot||0,
+            prodOn:   r.prodOn||0,
+            lt:       r.lt||0,
+            ftr:      r.ftr||0,
+            both:     r.both||0,
+        };
+    }
     function vsDelta(p){
         const d=(p-CFG.target).toFixed(1);
         return d>=0?`<span style="color:#1a6b35;font-weight:600">+${d}%</span>`
@@ -637,19 +669,16 @@
 
     // ─── KPI ─────────────────────────────────────────────────────────────────────
     function renderKPI(){
-        // Apply product filter to daily data — recompute from PRODUCTS_RAW for filtered view
-        const visProds = [...activeProds];
-        const filtProds = PRODUCTS_RAW.filter(p=>visProds.includes(p.key));
-        const rows  = DAILY_RAW;
-        const tOrd  = rows.reduce((s,r)=>s+r.ordTot,0);
-        const tDel  = rows.reduce((s,r)=>s+r.ordDel,0);
-        const tOn   = rows.reduce((s,r)=>s+r.ordOn,0);
-        const tRet  = rows.reduce((s,r)=>s+r.returns,0);
-        const tRev  = rows.reduce((s,r)=>s+r.revisions,0);
-        const tBr   = tDel-tOn-tRev; // breach = not on target, excluding revisions
-        const tProd = rows.reduce((s,r)=>s+r.prodTot,0);
-        const tPDel = rows.reduce((s,r)=>s+r.prodDel,0);
-        const tLt   = rows.reduce((s,r)=>s+r.lt,0);
+        const rows  = DAILY_RAW.map(norm);
+        const tOrd  = rows.reduce((s,r)=>s+(r.ordTot||0),0);
+        const tDel  = rows.reduce((s,r)=>s+(r.ordDel||r.ordTot||0),0);
+        const tOn   = rows.reduce((s,r)=>s+(r.ordOn||0),0);
+        const tRet  = rows.reduce((s,r)=>s+(r.returns||0),0);
+        const tRev  = rows.reduce((s,r)=>s+(r.revisions||0),0);
+        const tBr   = Math.max(0,tDel-tOn-tRev);
+        const tProd = rows.reduce((s,r)=>s+(r.prodTot||0),0);
+        const tPDel = rows.reduce((s,r)=>s+(r.prodDel||r.prodTot||0),0);
+        const tLt   = rows.reduce((s,r)=>s+(r.lt||0),0);
 
         document.getElementById('k-ord-tot').textContent=n(tOrd);
         document.getElementById('kd-ord-tot').textContent=MTD_MONTH+' '+MTD_YEAR;
@@ -687,21 +716,23 @@
         const el=getTooltipEl();
         if(tooltip.opacity===0){el.style.opacity='0';return;}
         const i=tooltip.dataPoints[0].dataIndex;
-        const r=DAILY_RAW[i];if(!r)return;
-        const oOnP=pct(r.ordOn,r.ordDel),pOnP=pct(r.prodOn,r.prodDel);
+        var _tooltipRows = [...(activePeriod==='week'?WEEKLY_RAW:DAILY_RAW)].map(norm).reverse();
+        const r=_tooltipRows[i];if(!r)return;
+        const nr=norm(r);
+        const oOnP=pct(nr.ordOn,nr.ordDel),pOnP=pct(nr.prodOn,nr.prodDel);
         const row=(lbl,val,col,sub)=>`<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:rgba(255,255,255,.6)">${lbl}</span><span style="color:${col||'#fff'};font-weight:500">${n(Math.round(val))}${sub?` <span style="color:rgba(255,255,255,.4);font-size:10px">(${sub})</span>`:''}</span></div>`;
         el.innerHTML=`<div style="font-weight:600;font-size:12px;margin-bottom:6px">${r.d}</div>`+
             `<div style="color:rgba(255,255,255,.3);font-size:10px;margin-bottom:5px">─────────────────────</div>`+
             `<div style="color:#7ec8f4;font-weight:600;margin-bottom:2px">📦 Orders</div>`+
-            row('Total',r.ordTot,'')+row('Delivered',r.ordDel,'')+
-            row('In progress',r.ordTot-r.ordDel,'#EF9F27')+
+            row('Total',nr.ordTot,'')+row('Delivered',nr.ordDel,'')+
+            row('In progress',nr.ordTot-nr.ordDel,'#EF9F27')+
             row('On target',r.ordOn,'#2FC974',oOnP.toFixed(1)+'%')+
-            row('Returns (Zibber)',r.returns,'#E24B4A')+
-            row('Revisions (client)',r.revisions,'#8B5CF6')+
+            row('Returns (Zibber)',nr.returns,'#E24B4A')+
+            row('Revisions (client)',nr.revisions,'#8B5CF6')+
             `<div style="color:rgba(255,255,255,.3);font-size:10px;margin:5px 0">─────────────────────</div>`+
             `<div style="color:#6ee8a8;font-weight:600;margin-bottom:2px">🔧 Productions</div>`+
-            row('Total',r.prodTot,'')+row('On target',r.prodOn,'#2FC974',pOnP.toFixed(1)+'%')+
-            row('LT breach',r.lt,'#EF9F27')+row('FTR breach',r.ftr,'#EF9F27')+row('Both',r.both,'#E24B4A');
+            row('Total',nr.prodTot,'')+row('On target',nr.prodOn,'#2FC974',pOnP.toFixed(1)+'%')+
+            row('LT breach',nr.lt,'#EF9F27')+row('FTR breach',nr.ftr,'#EF9F27')+row('Both',nr.both,'#E24B4A');
         const rect=chart.canvas.getBoundingClientRect();
         const x=rect.left+tooltip.caretX,y=rect.top+tooltip.caretY,w=230;
         el.style.left=(x+w+16>window.innerWidth?x-w-12:x+12)+'px';
@@ -710,8 +741,11 @@
 
     // ─── MAIN CHART ──────────────────────────────────────────────────────────────
     function buildMainChart(){
-        const rows=[...DAILY_RAW].reverse();
-        const labels=rows.map(r=>r.d.slice(5));
+        var rawRows = activePeriod==='week' ? WEEKLY_RAW : DAILY_RAW;
+        const rows=[...rawRows].map(norm).reverse();
+        const labels = activePeriod==='week'
+            ? rows.map(r=>r.week||r.label||'')
+            : rows.map(r=>(r.d||r.day||'').slice(5));
         const t=CFG.target;
         document.getElementById('tgtLegend').textContent=t+'%';
         if(charts.main)charts.main.destroy();
@@ -737,13 +771,14 @@
 
     // ─── BREACH DONUT ────────────────────────────────────────────────────────────
     function buildBreachDonut(){
-        const lt   = DAILY_RAW.reduce((s,r)=>s+r.lt,0);
-        const ftr  = DAILY_RAW.reduce((s,r)=>s+r.ftr,0);
-        const both = DAILY_RAW.reduce((s,r)=>s+r.both,0);
-        const ret  = DAILY_RAW.reduce((s,r)=>s+r.returns,0);
-        const rev  = DAILY_RAW.reduce((s,r)=>s+r.revisions,0);
-        const on   = DAILY_RAW.reduce((s,r)=>s+r.prodOn,0);
-        const tot  = DAILY_RAW.reduce((s,r)=>s+r.prodTot,0);
+        const _dr=DAILY_RAW.map(norm);
+        const lt   = _dr.reduce((s,r)=>s+r.lt,0);
+        const ftr  = _dr.reduce((s,r)=>s+r.ftr,0);
+        const both = _dr.reduce((s,r)=>s+r.both,0);
+        const ret  = _dr.reduce((s,r)=>s+r.returns,0);
+        const rev  = _dr.reduce((s,r)=>s+r.revisions,0);
+        const on   = _dr.reduce((s,r)=>s+r.prodOn,0);
+        const tot  = _dr.reduce((s,r)=>s+r.prodTot,0);
         if(charts.bDonut)charts.bDonut.destroy();
         charts.bDonut=new Chart(document.getElementById('breachDonut'),{
             type:'doughnut',
@@ -760,7 +795,7 @@
 
     // ─── WoW ─────────────────────────────────────────────────────────────────────
     function renderWoW(){
-        var sorted=WEEKLY_RAW;
+        var sorted=WEEKLY_RAW.map(norm);
         var curWk='W'+String(getWeekNum(new Date().toISOString().slice(0,10))).padStart(2,'0');
         var tO=0,tD=0,tOn=0,tRet=0,tRev=0,tP=0,tPD=0,tPOn=0,tLt=0,tFtr=0;
         var rows=sorted.map(function(w,i){
@@ -864,19 +899,33 @@
         sec.scrollIntoView({behavior:'smooth',block:'start'});
     }
 
-    // ─── CHIPS ───────────────────────────────────────────────────────────────────
-    function buildChips(){
-        document.getElementById('prodChips').innerHTML=PROD_CFG.map(p=>
-            `<span class="chip active" onclick="toggleChip(this,'${p.key.replace(/'/g,"\\'")}')">${p.key}</span>`
-        ).join('');
-        activeProds=new Set(PROD_CFG.map(p=>p.key));
-    }
-    function toggleChip(el,key){
-        el.classList.toggle('active');
-        if(activeProds.has(key))activeProds.delete(key);else activeProds.add(key);
-        renderAll();
+    // ─── PERIOD TOGGLE ───────────────────────────────────────────────────────────
+    var activePeriod = 'day'; // 'day' or 'week'
+
+    function setPeriod(p){
+        activePeriod = p;
+        document.getElementById('periodDay').classList.toggle('active', p==='day');
+        document.getElementById('periodWeek').classList.toggle('active', p==='week');
+        var lbl = document.getElementById('monthLabelChart');
+        var prefix = p==='week' ? 'Weekly on-target % — ' : 'Daily on-target % — ';
+        document.getElementById('chartPeriodLabel').childNodes[0].textContent = prefix;
+        buildMainChart();
     }
 
+    // ─── GLOBAL ORDER SEARCH ─────────────────────────────────────────────────────
+    function globalSearch(val){
+        var v=val.trim();
+        if(!v){ return; }
+        // Switch to order detail tab and filter there
+        switchTab('orders');
+        document.getElementById('globalOrderSearch').value=v;
+        // Also filter breach tab in background
+        renderOrders(v);
+        renderBreach(v);
+        // Highlight search input
+        var el=document.getElementById('globalOrderSearch');
+        el.style.borderColor=v?'var(--zb)':'var(--zborder)';
+    }
 
     // ─── CONTROLS ────────────────────────────────────────────────────────────────
     function setLand(btn,v){
@@ -890,6 +939,10 @@
         document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
         var target=document.getElementById('panel-'+t);
         if(target) target.classList.add('active');
+        // Sync order search field with order/breach tab search boxes
+        var gv=document.getElementById('globalOrderSearch').value.trim();
+        if(t==='orders')  renderOrders(gv);
+        if(t==='breach')  renderBreach(gv);
     }
 
     // ─── SETTINGS ────────────────────────────────────────────────────────────────
@@ -911,9 +964,290 @@
         closeSettings();renderAll();
     }
 
+    // ─── DAILY TABLE ─────────────────────────────────────────────────────────────
+    function renderDaily(){
+        var today=new Date().toISOString().slice(0,10);
+        var tO=0,tD=0,tOn=0,tRet=0,tRev=0,tP=0,tPD=0,tPOn=0,tLt=0,tFtr=0;
+        document.getElementById('dailyBody').innerHTML=DAILY_RAW.map(norm).map(function(r){
+            var isToday=r.day===today;
+            var oP=pct(r.ordOn,r.ordDel),pP=pct(r.prodOn,r.prodDel);
+            var br=Math.max(0,r.ordDel-r.ordOn);
+            tO+=r.ordTot;tD+=r.ordDel;tOn+=r.ordOn;tRet+=r.returns;tRev+=r.revisions;
+            tP+=r.prodTot;tPD+=r.prodDel;tPOn+=r.prodOn;tLt+=r.lt;tFtr+=r.ftr;
+            return '<tr class="'+(isToday?'today-row':'')+'">'+
+                '<td class="tl"><strong>'+r.day.slice(5)+'</strong>'+(isToday?'<span class="tbadge">TODAY</span>':'')+'</td>'+
+                '<td>'+n(r.ordTot)+'</td>'+
+                '<td><span class="b bg">'+n(r.ordDel)+'</span></td>'+
+                '<td>'+(r.ordTot-r.ordDel>0?'<span class="b bo">'+n(r.ordTot-r.ordDel)+'</span>':'—')+'</td>'+
+                '<td>'+pb(oP)+'</td>'+
+                '<td>'+(br>0?'<span class="b br">'+n(br)+'</span>':'—')+'</td>'+
+                '<td>'+(r.returns>0?'<span class="b br">'+n(r.returns)+'</span>':'—')+'</td>'+
+                '<td>'+(r.revisions>0?'<span class="b bp">'+n(r.revisions)+'</span>':'—')+'</td>'+
+                '<td>'+n(r.prodTot)+'</td>'+
+                '<td>'+pb(pP)+'</td>'+
+                '<td>'+(r.lt>0?'<span class="b ba">'+n(r.lt)+'</span>':'—')+'</td>'+
+                '<td>'+(r.ftr>0?'<span class="b ba">'+n(r.ftr)+'</span>':'—')+'</td>'+
+                '</tr>';
+        }).join('');
+        document.getElementById('dailyFoot').innerHTML='<tr class="tfoot">'+
+            '<td class="tl">MTD total</td><td>'+n(tO)+'</td><td>'+n(tD)+'</td><td>'+n(tO-tD)+'</td>'+
+            '<td>'+pb(pct(tOn,tD))+'</td><td>'+n(Math.max(0,tD-tOn-tRev))+'</td>'+
+            '<td>'+n(tRet)+'</td><td>'+n(tRev)+'</td>'+
+            '<td>'+n(tP)+'</td><td>'+pb(pct(tPOn,tPD))+'</td>'+
+            '<td>'+n(tLt)+'</td><td>'+n(tFtr)+'</td>'+
+            '</tr>';
+    }
+
+    // ─── PRODUCTS ────────────────────────────────────────────────────────────────
+    function renderProducts(){
+        var rows=filterProds(PRODUCTS_RAW);
+        var tOT=0,tOD=0,tOOn=0,tRet=0,tRev=0,tP=0,tPD=0,tPOn=0,tLt=0,tFtr=0,tBoth=0;
+        document.getElementById('productBody').innerHTML=rows.map(function(p){
+            var slaH=getSla(p.key);
+            var oP=pct(p.ordOn,p.ordDel||p.ordTot||1);
+            var pP=pct(p.prodOn,p.prodDel||p.prodTot||1);
+            var inPct=Math.round((p.prodOn||0)/Math.max(p.prodDel||p.prodTot||1,1)*100);
+            var br=Math.max(0,(p.ordDel||p.ordTot||0)-(p.ordOn||0)-(p.revisions||0));
+            tOT+=p.ordTot||0;tOD+=p.ordDel||p.ordTot||0;tOOn+=p.ordOn||0;
+            tRet+=p.returns||0;tRev+=p.ftr||0;
+            tP+=p.prodTot||0;tPD+=p.prodDel||p.prodTot||0;tPOn+=p.prodOn||0;
+            tLt+=p.lt||0;tFtr+=p.ftr||0;tBoth+=p.both||0;
+            return '<tr>'+
+                '<td class="tl" style="font-weight:500">'+p.key+'</td>'+
+                '<td style="text-align:center">'+slaH+'h</td>'+
+                '<td style="border-left:2px solid var(--zborder)">'+n(p.ordTot)+'</td>'+
+                '<td><span class="b bg">'+n(p.ordDel||p.ordTot)+'</span></td>'+
+                '<td>'+((p.ordTot-(p.ordDel||p.ordTot))>0?'<span class="b bo">'+n(p.ordTot-(p.ordDel||p.ordTot))+'</span>':'—')+'</td>'+
+                '<td>'+pb(oP)+'</td>'+
+                '<td>'+(br>0?'<span class="b br">'+n(br)+'</span>':'—')+'</td>'+
+                '<td class="col-sep"></td>'+
+                '<td>'+n(p.prodTot)+'</td>'+
+                '<td>'+pb(pP)+'</td>'+
+                '<td>'+(p.lt?'<span class="b ba">'+n(p.lt)+'</span>':'—')+'</td>'+
+                '<td>'+(p.returns?'<span class="b br">'+n(p.returns)+'</span>':'—')+'</td>'+
+                '<td>'+(p.ftr?'<span class="b bp">'+n(p.ftr)+'</span>':'—')+'</td>'+
+                '<td>'+(p.both?'<span class="b br">'+n(p.both)+'</span>':'—')+'</td>'+
+                '<td><div class="scell"><div class="sbar"><div class="sin" style="width:'+inPct+'%"></div><div class="sout" style="width:'+(100-inPct)+'%"></div></div></div></td>'+
+                '</tr>';
+        }).join('');
+        document.getElementById('productFoot').innerHTML='<tr class="tfoot">'+
+            '<td class="tl">Total</td><td>—</td>'+
+            '<td>'+n(tOT)+'</td><td>'+n(tOD)+'</td><td>'+n(tOT-tOD)+'</td>'+
+            '<td>'+pb(pct(tOOn,tOD))+'</td><td>'+n(Math.max(0,tOD-tOOn-tRev))+'</td>'+
+            '<td class="col-sep"></td>'+
+            '<td>'+n(tP)+'</td><td>'+pb(pct(tPOn,tPD))+'</td>'+
+            '<td>'+n(tLt)+'</td><td>'+n(tRet)+'</td><td>'+n(tFtr)+'</td><td>'+n(tBoth)+'</td><td></td>'+
+            '</tr>';
+    }
+
+    // ─── ORDER DETAIL ─────────────────────────────────────────────────────────────
+    var PROD_KEYS=[['photo','Photography'],['floor','Floorplanner'],['meas','Measurement'],
+        ['cad','CAD Report'],['vid','Video'],['soc','Social media video'],
+        ['reel','Social Media Reel'],['tour','360 tour'],['drone','Drone photography'],
+        ['mat','Matterport'],['kuula','KuulaTour'],['dvid','Drone video'],
+        ['art','Artist impression'],['eve','Evening impression'],['wofl','WOFL']];
+
+    function renderOrders(filter){
+        var rows=filterLand(ORDERS_RAW);
+        if(filter) rows=rows.filter(function(r){return String(r.id).includes(filter);});
+        document.getElementById('orderBody').innerHTML=rows.map(function(o){
+            var prods=PROD_KEYS.map(function(pk){return o[pk[0]];}).filter(Boolean);
+            var allOk=prods.every(function(p){return p.ok;});
+            var hasRet=prods.some(function(p){return p.status==='return';});
+            var hasRev=prods.some(function(p){return p.status==='ftr'||p.status==='revision';});
+            var sBadge=allOk?'<span class="b bg">On target</span>':
+                hasRet?'<span class="b br">Return</span>':
+                    hasRev?'<span class="b bp">FTR breach</span>':
+                        '<span class="b br">Breach</span>';
+            var cells=PROD_KEYS.map(function(pk){
+                var v=o[pk[0]];
+                if(!v) return '<td style="text-align:center;color:#ccc">—</td>';
+                return '<td class="'+statusCls(v.status)+'" style="text-align:center">'+
+                    '<a class="plink" href="https://zone.zibber.nl/production/'+v.id+'" target="_blank">'+v.id+'</a>'+
+                    '<div style="font-size:10px;color:var(--zm)">'+statusBadge(v.status)+'</div>'+
+                    (v.del>1?'<div style="font-size:9px;color:var(--zm)">'+v.del+' deliveries</div>':'')+'</td>';
+            }).join('');
+            return '<tr>'+
+                '<td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/'+o.id+'" target="_blank">'+o.id+'</a></td>'+
+                '<td class="tl"><span class="b bb">'+(o.country||'?')+'</span></td>'+
+                '<td class="tl">'+sBadge+'</td>'+
+                '<td class="tl"><div class="elinks">'+
+                '<a class="elink" href="https://zone.zibber.nl/orders/'+o.id+'" target="_blank">Zone</a>'+
+                '<a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~'+o.id+'" target="_blank">JOI</a>'+
+                '<a class="elink" href="https://stream.bright-river.com/all/find/'+o.id+'" target="_blank">STREAM</a>'+
+                '</div></td>'+cells+
+                '</tr>';
+        }).join('');
+    }
+
+    // ─── BREACH TABLE ─────────────────────────────────────────────────────────────
+    function renderBreach(filter){
+        var rows=filterLand(BREACH_RAW);
+        if(filter) rows=rows.filter(function(r){
+            return String(r.id).includes(filter)||r.prod.toLowerCase().includes(filter.toLowerCase());
+        });
+        document.getElementById('breachBody').innerHTML=rows.map(function(o){
+            var slaH=getSla(o.prod);
+            var lt=parseFloat(o.lt_display||o.lt||0);
+            var ltOver=lt>slaH;
+            return '<tr>'+
+                '<td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/'+o.id+'" target="_blank">'+o.id+'</a></td>'+
+                '<td style="text-align:center"><span class="b bb">'+(o.country||'?')+'</span></td>'+
+                '<td>'+o.prod+'</td>'+
+                '<td style="text-align:center">'+(o.created||'—')+'</td>'+
+                '<td style="text-align:center">'+(o.upload||'—')+'</td>'+
+                '<td style="text-align:center">'+(o.deadline||'—')+'</td>'+
+                '<td style="text-align:center;font-weight:600;color:'+(ltOver?'var(--zr)':'var(--zt)')+'">'+
+                (o.lt_display||o.lt||'—')+'</td>'+
+                '<td style="text-align:center">'+slaH+'h</td>'+
+                '<td style="text-align:center">'+(o.deliveries||o.rev||0)+'</td>'+
+                '<td style="text-align:center">'+breachLabel(o.reason)+'</td>'+
+                '<td><span class="rtag" title="'+(o.return_reason||o.rev_notes||'')+'">'+(o.return_reason||o.rev_notes||'—')+'</span></td>'+
+                '<td class="tl"><div class="elinks">'+
+                '<a class="elink" href="https://zone.zibber.nl/orders/'+o.id+'" target="_blank">Zone</a>'+
+                '<a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~'+o.id+'" target="_blank">JOI</a>'+
+                '</div></td>'+
+                '</tr>';
+        }).join('');
+    }
+
+
+    function buildReturnPie(){
+        var counts={};
+        RETURNS_RAW.forEach(function(r){var k=r.return_reason||'Unknown';counts[k]=(counts[k]||0)+1;});
+        var labels=Object.keys(counts),vals=Object.values(counts);
+        var colors=['#E24B4A','#EF9F27','#1F80F0','#2FC974','#8B5CF6','#F59E0B'];
+        if(charts.retPie)charts.retPie.destroy();
+        charts.retPie=new Chart(document.getElementById('returnPie'),{type:'doughnut',
+            data:{labels:labels.length?labels:['Geen return data'],datasets:[{data:vals.length?vals:[1],backgroundColor:vals.length?colors.slice(0,labels.length):['#E2E8F0'],borderWidth:2,borderColor:'#fff'}]},
+            options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:6}}}}
+        });
+    }
+
+    function buildRevisionPie(){
+        var counts={};
+        REVISIONS_RAW.forEach(function(r){var k=r.prod||'Unknown';counts[k]=(counts[k]||0)+1;});
+        var labels=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
+        var vals=labels.map(function(l){return counts[l];});
+        var colors=['#8B5CF6','#A78BFA','#1F80F0','#2FC974','#EF9F27','#E24B4A','#10B981','#F59E0B'];
+        if(charts.revPie)charts.revPie.destroy();
+        charts.revPie=new Chart(document.getElementById('revisionPie'),{type:'doughnut',
+            data:{labels:labels.length?labels:['Geen data'],datasets:[{data:vals.length?vals:[1],backgroundColor:vals.length?colors.slice(0,labels.length):['#E2E8F0'],borderWidth:2,borderColor:'#fff'}]},
+            options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:6}},tooltip:{callbacks:{label:function(c){return c.label+': '+c.parsed+' re-deliveries';}}}}}
+        });
+    }
+
+    function buildRetRevByProd(){
+        var prods=filterProds(PRODUCTS_RAW).filter(function(p){return (p.returns||0)>0||(p.ftr||0)>0;});
+        if(charts.rrProd)charts.rrProd.destroy();
+        charts.rrProd=new Chart(document.getElementById('retRevByProd'),{type:'bar',
+            data:{labels:prods.map(function(p){return p.key.substring(0,12);}),datasets:[
+                    {label:'Returns',data:prods.map(function(p){return p.returns||0;}),backgroundColor:'rgba(226,75,74,.8)',borderRadius:3,borderSkipped:false},
+                    {label:'FTR breach',data:prods.map(function(p){return p.ftr||0;}),backgroundColor:'rgba(139,92,246,.7)',borderRadius:3,borderSkipped:false},
+                ]},
+            options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,padding:8}}},
+                scales:{x:{ticks:{font:{size:10},color:'#888'},grid:{display:false}},y:{ticks:{font:{size:10},color:'#888'},grid:{color:'rgba(0,0,0,.05)'}}}}
+        });
+    }
+
+    function renderReturns(){
+        if(!RETURNS_RAW.length){
+            document.getElementById('returnsBody').innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--zm);font-size:12px">Geen return data — voeg <strong>return_appointment</strong> en <strong>return_appointment_notes</strong> toe aan Query A</td></tr>';
+            return;
+        }
+        document.getElementById('returnsBody').innerHTML=RETURNS_RAW.map(function(r){
+            return '<tr>'+
+                '<td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">'+r.id+'</a></td>'+
+                '<td style="text-align:center"><span class="b bb">'+(r.country||'?')+'</span></td>'+
+                '<td>'+(r.prod||'—')+'</td>'+
+                '<td style="text-align:center">'+(r.appt_date||'—')+'</td>'+
+                '<td style="text-align:center"><span class="b br">'+(r.return_reason||'—')+'</span></td>'+
+                '<td><span class="rtag" title="'+(r.appt_notes||'')+'">'+(r.appt_notes||'—')+'</span></td>'+
+                '<td style="text-align:center;font-weight:600;color:var(--zr)">'+(r.lt||'—')+'</td>'+
+                '<td style="text-align:center">'+(r.sla_ok?'<span class="b bg">On target</span>':'<span class="b br">Breach</span>')+'</td>'+
+                '<td class="tl"><div class="elinks"><a class="elink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">Zone</a><a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~'+r.id+'" target="_blank">JOI</a></div></td>'+
+                '</tr>';
+        }).join('');
+    }
+
+    function renderRevisions(){
+        if(!REVISIONS_RAW.length){
+            document.getElementById('revisionsBody').innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--zm)">Geen data</td></tr>';
+            return;
+        }
+        document.getElementById('revisionsBody').innerHTML=REVISIONS_RAW.map(function(r){
+            var cls=r.breach_type==='ftr'?'<span class="b ba">FTR breach</span>':r.breach_type==='both'?'<span class="b br">LT + FTR</span>':'<span class="b ba">Breach</span>';
+            return '<tr>'+
+                '<td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">'+r.id+'</a></td>'+
+                '<td style="text-align:center"><span class="b bb">'+(r.country||'?')+'</span></td>'+
+                '<td>'+(r.prod||'—')+'</td>'+
+                '<td style="text-align:center">'+(r.rev_date||'—')+'</td>'+
+                '<td style="text-align:center;font-weight:600">'+r.deliveries+' deliveries</td>'+
+                '<td><span class="rtag">'+(r.rev_notes||'—')+'</span></td>'+
+                '<td style="text-align:center">'+(r.lt_display||'—')+'</td>'+
+                '<td style="text-align:center">'+cls+'</td>'+
+                '<td class="tl"><div class="elinks"><a class="elink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">Zone</a><a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~'+r.id+'" target="_blank">JOI</a></div></td>'+
+                '</tr>';
+        }).join('');
+    }
+
+    // ─── PERFORMANCE ─────────────────────────────────────────────────────────────
+    function renderPerf(){
+        var t=CFG.target;
+        document.getElementById('targetLabel').textContent=t+'%';
+        var rows=filterProds(PRODUCTS_RAW);
+        var oPs=rows.map(function(p){return pct(p.ordOn,p.ordDel||p.ordTot||1);});
+        var pPs=rows.map(function(p){return pct(p.prodOn,p.prodDel||p.prodTot||1);});
+        if(charts.perf)charts.perf.destroy();
+        charts.perf=new Chart(document.getElementById('perfChart'),{type:'bar',
+            data:{labels:rows.map(function(p){return p.key.substring(0,12);}),datasets:[
+                    {label:'Orders on target %',data:oPs,backgroundColor:oPs.map(function(v){return v>=t?'rgba(31,128,240,.8)':v>=(t-10)?'rgba(239,159,39,.8)':'rgba(226,75,74,.8)';}),borderRadius:4,borderSkipped:false},
+                    {label:'Prod on target %',  data:pPs,backgroundColor:pPs.map(function(v){return v>=t?'rgba(47,201,116,.7)':v>=(t-10)?'rgba(239,159,39,.5)':'rgba(226,75,74,.5)';}),borderRadius:4,borderSkipped:false},
+                ]},
+            options:{responsive:true,maintainAspectRatio:false,
+                plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y.toFixed(1)+'%';}}}},
+                scales:{x:{ticks:{font:{size:10},color:'#888'},grid:{display:false}},y:{min:0,max:100,ticks:{font:{size:10},color:'#888',callback:function(v){return v+'%';}},grid:{color:'rgba(0,0,0,.05)'}}}
+            }
+        });
+        document.getElementById('perfGrid').innerHTML=rows.map(function(p){
+            var oP=pct(p.ordOn,p.ordDel||p.ordTot||1),pP=pct(p.prodOn,p.prodDel||p.prodTot||1);
+            var cls=pP>=t?'ok':pP>=(t-10)?'warn':'fail';
+            var barC=pP>=t?'var(--zg)':pP>=(t-10)?'var(--za)':'var(--zr)';
+            return '<div class="pcard '+cls+'">'+
+                '<div class="pcard-name">'+p.key+' <span class="b '+(pP>=t?'bg':pP>=(t-10)?'ba':'br')+'">'+pP.toFixed(1)+'%</span></div>'+
+                '<div class="pstats">'+
+                '<div class="pst"><div class="pst-lbl">Orders</div><div class="pst-val">'+n(p.ordTot)+'</div></div>'+
+                '<div class="pst"><div class="pst-lbl">On target</div><div class="pst-val '+(oP>=t?'ok':'fail')+'">'+n(p.ordOn)+' ('+oP.toFixed(0)+'%)</div></div>'+
+                '<div class="pst"><div class="pst-lbl">Returns</div><div class="pst-val '+(p.returns>0?'fail':'ok')+'">'+n(p.returns||0)+'</div></div>'+
+                '<div class="pst"><div class="pst-lbl">FTR breach</div><div class="pst-val" style="color:var(--zp)">'+n(p.ftr||0)+'</div></div>'+
+                '</div>'+
+                '<div class="pbar-wrap">'+
+                '<div class="pbar-labels"><span>Productions on target</span><span>'+t+'% target</span></div>'+
+                '<div class="pbar"><div class="pbar-fill" style="width:'+Math.min(pP,100)+'%;background:'+barC+'"></div><div class="pbar-target" style="left:'+Math.min(t,100)+'%"></div></div>'+
+                '<div class="pbar-note" style="color:'+(pP>=t?'#1a6b35':'var(--zr)')+'">'+( pP>=t?'✓ On target':'✗ '+Math.abs(pP-t).toFixed(1)+'% below target')+'</div>'+
+                '</div>'+
+                '</div>';
+        }).join('');
+        document.getElementById('perfBody').innerHTML=rows.map(function(p){
+            var oP=pct(p.ordOn,p.ordDel||p.ordTot||1),pP=pct(p.prodOn,p.prodDel||p.prodTot||1);
+            return '<tr>'+
+                '<td class="tl" style="font-weight:500">'+p.key+'</td>'+
+                '<td style="text-align:center">'+t+'%</td>'+
+                '<td style="border-left:2px solid var(--zborder)">'+n(p.ordTot)+'</td>'+
+                '<td><span class="b bg">'+n(p.ordOn)+'</span></td>'+
+                '<td>'+pb(oP)+'</td>'+
+                '<td class="col-sep"></td>'+
+                '<td>'+n(p.prodTot)+'</td>'+
+                '<td>'+pb(pP)+'</td>'+
+                '<td>'+(p.returns?'<span class="b br">'+n(p.returns)+'</span>':'—')+'</td>'+
+                '<td>'+(p.ftr?'<span class="b bp">'+n(p.ftr)+'</span>':'—')+'</td>'+
+                '<td>'+vsDelta(pP)+'</td>'+
+                '</tr>';
+        }).join('');
+    }
+
     // ─── RENDER ALL ───────────────────────────────────────────────────────────────
-    async function renderAll(){
-        await loadData();
+    function renderAll(){
         renderKPI();
         buildMainChart();
         buildBreachDonut();
@@ -937,6 +1271,16 @@
     document.getElementById('monthLabelWow').textContent   = MTD_MONTH+' '+MTD_YEAR;
     document.getElementById('lastUpdated').textContent = NOW.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
     document.getElementById('footerDate').textContent  = NOW.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    // ─── CHIPS ───────────────────────────────────────────────────────────────────
+    function buildChips(){
+        var inData=[...new Set(PRODUCTS_RAW.map(function(p){return p.key;}))].sort(function(a,b){return a.localeCompare(b);});
+        activeProds=new Set(inData);
+        document.getElementById('prodChips').innerHTML=inData.map(function(k){
+            return '<span class="chip active" onclick="toggleChip(this,\''+k.replace(/'/g,"\\'")+'\')">' + k + '</span>';
+        }).join('');
+    }
+
+    // ─── INIT ────────────────────────────────────────────────────────────────────
     buildChips();
     renderAll();
 </script>
