@@ -21,13 +21,13 @@
         .ibtn:hover{background:rgba(255,255,255,.15)}
 
         /* SLA Legend */
-        .sla-legend{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap}
-        .sla-legend-title{font-size:11px;font-weight:600;color:var(--zm);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;padding-top:2px}
-        .sla-items{display:flex;gap:8px;flex-wrap:wrap;flex:1}
-        .sla-item{display:flex;align-items:flex-start;gap:8px;padding:7px 11px;border-radius:var(--r);border:0.5px solid var(--zborder);min-width:180px;flex:1}
-        .sla-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:2px}
-        .sla-item-label{font-size:11px;font-weight:600;color:var(--zt);margin-bottom:2px}
-        .sla-item-desc{font-size:10px;color:var(--zm);line-height:1.4}
+        .sla-legend{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+        .sla-legend-title{font-size:10px;font-weight:700;color:var(--zm);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
+        .sla-items{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+        .sla-item{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:20px;border:0.5px solid var(--zborder);white-space:nowrap}
+        .sla-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+        .sla-item-label{font-size:11px;font-weight:600;color:var(--zt)}
+        .sla-item-desc{font-size:10px;color:var(--zm);margin-left:2px}
         .sla-item.ok{background:#F0FBF4;border-color:#A7E3BC}
         .sla-item.lt{background:#FEF9EC;border-color:#F5D98A}
         .sla-item.ret{background:#FEF0F0;border-color:#F5ABAB}
@@ -63,7 +63,7 @@
         .tabs{display:flex;gap:2px;border-bottom:2px solid var(--zborder);margin-bottom:14px}
         .tab{padding:7px 16px;font-size:12px;font-weight:500;cursor:pointer;color:var(--zm);border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:var(--r) var(--r) 0 0;white-space:nowrap}
         .tab:hover{color:var(--zb);background:var(--zlight)}.tab.active{color:var(--zd);border-bottom-color:var(--zb);background:#fff}
-        .panel{display:none !important}.panel.active{display:block !important}
+        .panel{display:none}.panel.active{display:block}
 
         /* Cards */
         .card{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:16px;overflow:visible}
@@ -182,41 +182,41 @@
 
     <!-- SLA Legend -->
     <div class="sla-legend">
-        <span class="sla-legend-title">SLA legend</span>
+        <div class="sla-legend-title">SLA</div>
         <div class="sla-items">
             <div class="sla-item ok">
                 <span class="sla-dot" style="background:var(--zg)"></span>
                 <div>
                     <div class="sla-item-label">On target</div>
-                    <div class="sla-item-desc">Lead time ≤ SLA norm AND 0 revisions AND no return appointment</div>
+                    <div class="sla-item-desc">Upload ≤ deadline AND 1 delivery</div>
                 </div>
             </div>
             <div class="sla-item lt">
                 <span class="sla-dot" style="background:var(--za)"></span>
                 <div>
                     <div class="sla-item-label">Lead time breach</div>
-                    <div class="sla-item-desc">Upload timestamp &gt; expected delivery date · no return or revision</div>
+                    <div class="sla-item-desc">Upload after expected delivery date</div>
                 </div>
             </div>
             <div class="sla-item ret">
                 <span class="sla-dot" style="background:var(--zr)"></span>
                 <div>
-                    <div class="sla-item-label">Return — Zibber fault</div>
-                    <div class="sla-item-desc">Return appointment scheduled · production re-done by Zibber/photographer</div>
+                    <div class="sla-item-label">FTR breach</div>
+                    <div class="sla-item-desc">More than 1 delivery (re-delivery)</div>
                 </div>
             </div>
             <div class="sla-item rev">
                 <span class="sla-dot" style="background:var(--zp)"></span>
                 <div>
-                    <div class="sla-item-label">Revision — client request</div>
-                    <div class="sla-item-desc">Client requested changes after delivery · revisions.notes contains instruction</div>
+                    <div class="sla-item-label">Revision (client)</div>
+                    <div class="sla-item-desc">Client requested change · tracked separately</div>
                 </div>
             </div>
             <div class="sla-item both">
                 <span class="sla-dot" style="background:var(--zr)"></span>
                 <div>
-                    <div class="sla-item-label">Lead time + return/revision</div>
-                    <div class="sla-item-desc">Both lead time exceeded AND return or revision present</div>
+                    <div class="sla-item-label">Both breached</div>
+                    <div class="sla-item-desc">Late upload AND multiple deliveries</div>
                 </div>
             </div>
         </div>
@@ -224,16 +224,7 @@
 
     <!-- Filter bar -->
     <div class="fbar">
-        <div class="fg">
-            <span class="fl">Country</span>
-            <div style="display:flex;gap:4px">
-                <button class="lbtn active" onclick="setLand(this,'ALL')">ALL</button>
-                <button class="lbtn" onclick="setLand(this,'NL')">NL</button>
-                <button class="lbtn" onclick="setLand(this,'BE')">BE</button>
-                <button class="lbtn" onclick="setLand(this,'DE')">DE</button>
-            </div>
-        </div>
-        <div class="fdiv"></div>
+
         <div class="fg" style="flex-wrap:wrap">
             <span class="fl">Product</span>
             <div class="chips" id="prodChips"></div>
@@ -289,7 +280,7 @@
             </div>
         </div>
 
-        <div class="slabel">Week over week — <span id="monthLabelWow"></span></div>
+        <div class="slabel" onclick="toggleWowDrill()" id="wowDrillToggle">Week over week — <span id="monthLabelWow"></span> <span style="font-size:11px;font-weight:400;color:var(--zb)" id="wowDrillHint">click week to see daily detail ↓</span></div>
         <div class="twrap sx">
             <table>
                 <thead><tr>
@@ -309,6 +300,20 @@
                 <tbody id="wowBody"></tbody>
                 <tfoot id="wowFoot"></tfoot>
             </table>
+        </div>
+
+        <div id="wowDrillSection" style="display:none">
+            <div class="slabel">Daily detail — <span id="wowDrillLabel"></span></div>
+            <div class="twrap sx">
+                <table>
+                    <thead><tr>
+                        <th class="tl" style="min-width:105px">Date</th>
+                        <th>Orders</th><th>On target %</th><th>Breach</th>
+                        <th>Productions</th><th>On target %</th><th>LT breach</th><th>FTR breach</th>
+                    </tr></thead>
+                    <tbody id="wowDrillBody"></tbody>
+                </table>
+            </div>
         </div>
 
         <div class="slabel">Daily breakdown — <span id="monthLabel"></span></div>
@@ -567,73 +572,26 @@
     const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const MTD_MONTH = MONTH_NAMES[NOW.getMonth()];
 
-    // ─── MOCK DATA — replace with fetch('/api/dashboard/mtd') ────────────────────
-    let DAILY_RAW    = [
-        {d:'2026-06-16',ordTot:22,  ordDel:0,  ordOn:0,  returns:0, revisions:0, prodTot:74,  prodDel:0,  prodOn:0,  lt:0,  ftr:0,  both:22},
-        {d:'2026-06-15',ordTot:386, ordDel:177,ordOn:110, returns:8, revisions:5, prodTot:1284,prodDel:650,prodOn:420,lt:80, ftr:60, both:90},
-        {d:'2026-06-12',ordTot:355, ordDel:337,ordOn:289, returns:5, revisions:3, prodTot:1172,prodDel:1100,prodOn:980,lt:40,ftr:30, both:50},
-        {d:'2026-06-11',ordTot:398, ordDel:384,ordOn:320, returns:6, revisions:4, prodTot:1313,prodDel:1250,prodOn:1100,lt:50,ftr:40,both:60},
-        {d:'2026-06-10',ordTot:405, ordDel:398,ordOn:352, returns:4, revisions:6, prodTot:1337,prodDel:1300,prodOn:1180,lt:40,ftr:30,both:50},
-        {d:'2026-06-09',ordTot:412, ordDel:403,ordOn:358, returns:3, revisions:5, prodTot:1360,prodDel:1320,prodOn:1200,lt:45,ftr:35,both:40},
-        {d:'2026-06-08',ordTot:395, ordDel:382,ordOn:330, returns:7, revisions:4, prodTot:1304,prodDel:1250,prodOn:1100,lt:50,ftr:40,both:60},
-        {d:'2026-06-05',ordTot:403, ordDel:398,ordOn:370, returns:3, revisions:2, prodTot:1330,prodDel:1300,prodOn:1200,lt:30,ftr:25,both:45},
-        {d:'2026-06-04',ordTot:404, ordDel:399,ordOn:371, returns:4, revisions:3, prodTot:1333,prodDel:1310,prodOn:1210,lt:28,ftr:22,both:40},
-        {d:'2026-06-03',ordTot:403, ordDel:400,ordOn:388, returns:2, revisions:1, prodTot:1330,prodDel:1320,prodOn:1280,lt:15,ftr:10,both:15},
-        {d:'2026-06-02',ordTot:434, ordDel:422,ordOn:370, returns:6, revisions:4, prodTot:1432,prodDel:1390,prodOn:1250,lt:40,ftr:30,both:70},
-        {d:'2026-06-01',ordTot:476, ordDel:458,ordOn:390, returns:5, revisions:5, prodTot:1571,prodDel:1510,prodOn:1350,lt:50,ftr:40,both:70},
-    ];
+    // ─── REAL DATA — FTR = delivery_count == 1, LT = upload <= expected_delivery_date ──
+    let DAILY_RAW    = [];
+    let WEEKLY_RAW   = [];
+    let PRODUCTS_RAW = [];
+    let ORDERS_RAW   = [];
+    let BREACH_RAW   = [];
+    let RETURNS_RAW  = [];
+    let REVISIONS_RAW= [];
 
-    let PRODUCTS_RAW = [
-        {key:'Photography',       ordTot:280,ordDel:240,ordOn:170,returns:12,revisions:8, prodTot:1400,prodDel:1200,prodOn:850,lt:80, ftr:120,both:150},
-        {key:'Floorplanner',      ordTot:270,ordDel:230,ordOn:100,returns:18,revisions:12,prodTot:1350,prodDel:1150,prodOn:500,lt:200,ftr:280,both:170},
-        {key:'Measurement',       ordTot:20, ordDel:12, ordOn:6,  returns:1, revisions:1, prodTot:20,  prodDel:12,  prodOn:6,  lt:3,  ftr:2,  both:1},
-        {key:'CAD Report',        ordTot:30, ordDel:25, ordOn:14, returns:2, revisions:2, prodTot:30,  prodDel:25,  prodOn:14, lt:5,  ftr:4,  both:2},
-        {key:'Video',             ordTot:240,ordDel:200,ordOn:140,returns:8, revisions:15,prodTot:1200,prodDel:1000,prodOn:700,lt:100,ftr:80, both:120},
-        {key:'Social media video',ordTot:18, ordDel:14, ordOn:7,  returns:1, revisions:3, prodTot:18,  prodDel:14,  prodOn:7,  lt:3,  ftr:2,  both:2},
-        {key:'Social Media Reel', ordTot:8,  ordDel:6,  ordOn:4,  returns:0, revisions:1, prodTot:8,   prodDel:6,   prodOn:4,  lt:1,  ftr:1,  both:0},
-        {key:'360 tour',          ordTot:220,ordDel:185,ordOn:130,returns:5, revisions:7, prodTot:1100,prodDel:925, prodOn:650,lt:90, ftr:60, both:125},
-        {key:'Drone photography', ordTot:12, ordDel:10, ordOn:6,  returns:1, revisions:0, prodTot:12,  prodDel:10,  prodOn:6,  lt:2,  ftr:1,  both:1},
-        {key:'Matterport',        ordTot:22, ordDel:18, ordOn:12, returns:1, revisions:1, prodTot:22,  prodDel:18,  prodOn:12, lt:2,  ftr:2,  both:2},
-        {key:'KuulaTour',         ordTot:5,  ordDel:4,  ordOn:3,  returns:0, revisions:0, prodTot:5,   prodDel:4,   prodOn:3,  lt:0,  ftr:1,  both:0},
-        {key:'Drone video',       ordTot:6,  ordDel:5,  ordOn:3,  returns:0, revisions:1, prodTot:6,   prodDel:5,   prodOn:3,  lt:1,  ftr:1,  both:0},
-        {key:'Artist impression', ordTot:10, ordDel:8,  ordOn:5,  returns:1, revisions:0, prodTot:10,  prodDel:8,   prodOn:5,  lt:1,  ftr:1,  both:1},
-        {key:'Evening impression',ordTot:4,  ordDel:3,  ordOn:2,  returns:0, revisions:1, prodTot:4,   prodDel:3,   prodOn:2,  lt:0,  ftr:1,  both:0},
-        {key:'WOFL',              ordTot:2,  ordDel:2,  ordOn:1,  returns:0, revisions:0, prodTot:2,   prodDel:2,   prodOn:1,  lt:0,  ftr:1,  both:0},
-    ];
-
-    // Returns — from api.appointments where return_appointment=true
-    let RETURNS_RAW = [
-        {id:'1663616',country:'NL',prod:'Floorplanner',appt_date:'2026-06-15',return_reason:'Verkeerde opname',appt_notes:'Klant niet thuis geweest, opname incorrect',lt:'31h',sla_ok:false,breach_type:'lt+return'},
-        {id:'1662862',country:'BE',prod:'Photography', appt_date:'2026-06-14',return_reason:'Kwaliteit onvoldoende',appt_notes:'Belichting niet goed, overbelicht',lt:'28h',sla_ok:false,breach_type:'return'},
-        {id:'1661900',country:'BE',prod:'CAD Report',  appt_date:'2026-06-13',return_reason:'Technische fout',appt_notes:'Maten kloppen niet met reality',lt:'61h',sla_ok:false,breach_type:'lt+return'},
-        {id:'1658538',country:'NL',prod:'Photography', appt_date:'2026-06-10',return_reason:'Verkeerde opname',appt_notes:'',lt:'29h',sla_ok:false,breach_type:'lt+return'},
-        {id:'1658335',country:'NL',prod:'Floorplanner',appt_date:'2026-06-09',return_reason:'Kwaliteit onvoldoende',appt_notes:'Plattegrond mist verdieping',lt:'22h',sla_ok:false,breach_type:'return'},
-        {id:'1658403',country:'NL',prod:'360 tour',    appt_date:'2026-06-09',return_reason:'Technische fout',appt_notes:'Camera hoek niet correct ingesteld',lt:'18h',sla_ok:false,breach_type:'return'},
-    ];
-
-    // Revisions — from api.revisions where notes != null, joined to production
-    let REVISIONS_RAW = [
-        {id:'1651221',country:'NL',prod:'Floorplanner',rev_date:'2026-06-19',rev_notes:'Graag keuken iets groter tekenen en slaapkamer label aanpassen',lt:'442h',sla_ok:false,breach_type:'revision'},
-        {id:'1651221',country:'NL',prod:'Photography', rev_date:'2026-06-19',rev_notes:'Extra foto badkamer toevoegen',lt:'442h',sla_ok:false,breach_type:'revision'},
-        {id:'1658411',country:'BE',prod:'Video',        rev_date:'2026-06-11',rev_notes:'Beginscène verwijderen, te lang',lt:'25h',sla_ok:false,breach_type:'lt+revision'},
-        {id:'1663627',country:'NL',prod:'Floorplanner',rev_date:'2026-06-17',rev_notes:'Terras toevoegen aan plattegrond',lt:'9h', sla_ok:true, breach_type:'revision'},
-        {id:'1662986',country:'DE',prod:'360 tour',     rev_date:'2026-06-16',rev_notes:'Startpositie aanpassen naar woonkamer',lt:'22h',sla_ok:false,breach_type:'revision'},
-    ];
-
-    // Breach list (lead time only — returns are in RETURNS_RAW)
-    let BREACH_RAW = [
-        {id:'1662274',country:'NL',prod:'Photography', created:'2026-06-14',upload:'2026-06-16 12:00',deadline:'2026-06-15 14:00',lt:'38h',sla:24,rev:0,reason:'lt',return_reason:'',rev_notes:''},
-        {id:'1658340',country:'BE',prod:'Artist impression',created:'2026-06-10',upload:'—',deadline:'2026-06-11 09:00',lt:'—',sla:72,rev:0,reason:'lt',return_reason:'',rev_notes:''},
-    ];
-
-    // Orders
-    let ORDERS_RAW = [
-        {id:'1662862',country:'NL',photo:{id:'709070',ok:true,status:'ok'},floor:{id:'711004',ok:false,status:'return'}},
-        {id:'1663616',country:'NL',floor:{id:'713609',ok:false,status:'lt'},tour:{id:'713611',ok:true,status:'ok'}},
-        {id:'1651221',country:'NL',floor:{id:'669365',ok:false,status:'revision'},photo:{id:'669349',ok:false,status:'revision'},tour:{id:'669347',ok:true,status:'ok'}},
-        {id:'1661900',country:'BE',photo:{id:'808201',ok:true,status:'ok'},floor:{id:'808199',ok:true,status:'ok'},tour:{id:'808203',ok:true,status:'ok'},vid:{id:'808202',ok:false,status:'revision'}},
-        {id:'1658236',country:'NL',photo:{id:'700300',ok:true,status:'ok'},floor:{id:'700301',ok:true,status:'ok'},tour:{id:'700302',ok:true,status:'ok'}},
-    ];
+    async function loadData() {
+        const res  = await fetch('/dashboard/mtd?country=' + (activeLand || 'ALL'));
+        const data = await res.json();
+        DAILY_RAW    = data.daily;
+        WEEKLY_RAW   = data.weekly;
+        PRODUCTS_RAW = data.products;
+        ORDERS_RAW   = data.orders;
+        BREACH_RAW   = data.breach;
+        RETURNS_RAW  = data.returns   || [];
+        REVISIONS_RAW= data.revisions || [];
+    }
 
     // ─── STATE ────────────────────────────────────────────────────────────────────
     let activeLand = 'ALL';
@@ -679,6 +637,9 @@
 
     // ─── KPI ─────────────────────────────────────────────────────────────────────
     function renderKPI(){
+        // Apply product filter to daily data — recompute from PRODUCTS_RAW for filtered view
+        const visProds = [...activeProds];
+        const filtProds = PRODUCTS_RAW.filter(p=>visProds.includes(p.key));
         const rows  = DAILY_RAW;
         const tOrd  = rows.reduce((s,r)=>s+r.ordTot,0);
         const tDel  = rows.reduce((s,r)=>s+r.ordDel,0);
@@ -799,344 +760,108 @@
 
     // ─── WoW ─────────────────────────────────────────────────────────────────────
     function renderWoW(){
-        const weeks={};
-        DAILY_RAW.forEach(r=>{
-            const wk='W'+String(getWeekNum(r.d)).padStart(2,'0');
-            const d=new Date(r.d);
-            if(!weeks[wk]){
-                const day=d.getDay()||7;
-                const mon=new Date(d);mon.setDate(d.getDate()-day+1);
-                const sun=new Date(mon);sun.setDate(mon.getDate()+6);
-                const fmt=dt=>dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-                weeks[wk]={label:wk+' · '+fmt(mon)+' – '+fmt(sun),ordTot:0,ordDel:0,ordOn:0,returns:0,revisions:0,prodTot:0,prodDel:0,prodOn:0,lt:0,ftr:0,isCurrent:false};
+        var sorted=WEEKLY_RAW;
+        var curWk='W'+String(getWeekNum(new Date().toISOString().slice(0,10))).padStart(2,'0');
+        var tO=0,tD=0,tOn=0,tRet=0,tRev=0,tP=0,tPD=0,tPOn=0,tLt=0,tFtr=0;
+        var rows=sorted.map(function(w,i){
+            var prev=sorted[i-1];
+            var oP=pct(w.ordOn,w.ordDel);
+            var delta='';
+            if(prev&&prev.ordDel>0){
+                var d=(oP-pct(prev.ordOn,prev.ordDel)).toFixed(1);
+                var col=parseFloat(d)>=0?'#1a6b35':'var(--zr)';
+                delta=' <span style="font-size:10px;color:'+col+';font-weight:600">'+(parseFloat(d)>=0?'▲':'▼')+Math.abs(parseFloat(d))+'%</span>';
             }
-            const w=weeks[wk];
-            w.ordTot+=r.ordTot;w.ordDel+=r.ordDel;w.ordOn+=r.ordOn;
-            w.returns+=r.returns;w.revisions+=r.revisions;
-            w.prodTot+=r.prodTot;w.prodDel+=r.prodDel;w.prodOn+=r.prodOn;
-            w.lt+=r.lt;w.ftr+=r.ftr;
-        });
-        const curWk='W'+String(getWeekNum(NOW.toISOString().slice(0,10))).padStart(2,'0');
-        if(weeks[curWk])weeks[curWk].isCurrent=true;
-        const sorted=Object.values(weeks).sort((a,b)=>a.label<b.label?-1:1);
-        let tO=0,tD=0,tOn=0,tRet=0,tRev=0,tP=0,tPD=0,tPOn=0,tLt=0,tFtr=0;
-        document.getElementById('wowBody').innerHTML=sorted.map((w,i)=>{
-            const prev=sorted[i-1];
-            const oP=pct(w.ordOn,w.ordDel);
-            let delta='';
-            if(prev){const d=(oP-pct(prev.ordOn,prev.ordDel)).toFixed(1);delta=` <span style="font-size:10px;color:${d>=0?'#1a6b35':'var(--zr)'};font-weight:600">${d>=0?'▲':'▼'}${Math.abs(d)}%</span>`;}
-            tO+=w.ordTot;tD+=w.ordDel;tOn+=w.ordOn;tRet+=w.returns;tRev+=w.revisions;
+            var isCur=w.week===curWk;
+            var br=Math.max(0,w.ordDel-w.ordOn);
+            tO+=w.ordTot;tD+=w.ordDel;tOn+=w.ordOn;
+            tRet+=(w.returns||0);tRev+=(w.revisions||0);
             tP+=w.prodTot;tPD+=w.prodDel;tPOn+=w.prodOn;tLt+=w.lt;tFtr+=w.ftr;
-            return`<tr${w.isCurrent?' style="background:#FFFBEB"':''}>
-      <td class="tl" style="font-weight:600">${w.label}${w.isCurrent?'<span class="tbadge">NOW</span>':''}</td>
-      <td>${n(w.ordTot)}</td><td><span class="b bg">${n(w.ordDel)}</span></td>
-      <td>${pb(oP)}${delta}</td>
-      <td>${(w.ordDel-w.ordOn-w.revisions)>0?`<span class="b br">${n(w.ordDel-w.ordOn-w.revisions)}</span>`:'—'}</td>
-      <td>${w.returns>0?`<span class="b br">${n(w.returns)}</span>`:'—'}</td>
-      <td>${w.revisions>0?`<span class="b bp">${n(w.revisions)}</span>`:'—'}</td>
-      <td class="col-sep"></td>
-      <td>${n(w.prodTot)}</td><td>${pb(pct(w.prodOn,w.prodDel))}</td>
-      <td>${w.lt>0?`<span class="b ba">${n(w.lt)}</span>`:'—'}</td>
-      <td>${w.ftr>0?`<span class="b ba">${n(w.ftr)}</span>`:'—'}</td>
-    </tr>`;
-        }).join('');
-        document.getElementById('wowFoot').innerHTML=`<tr class="tfoot">
-    <td class="tl">MTD total</td>
-    <td>${n(tO)}</td><td>${n(tD)}</td><td>${pb(pct(tOn,tD))}</td>
-    <td>${n(Math.max(0,tD-tOn-tRev))}</td><td>${n(tRet)}</td><td>${n(tRev)}</td>
-    <td class="col-sep"></td><td>${n(tP)}</td><td>${pb(pct(tPOn,tPD))}</td>
-    <td>${n(tLt)}</td><td>${n(tFtr)}</td>
-  </tr>`;
-    }
-
-    // ─── DAILY TABLE ─────────────────────────────────────────────────────────────
-    function renderDaily(){
-        const today=new Date().toISOString().slice(0,10);
-        let tO=0,tD=0,tOn=0,tRet=0,tRev=0,tP=0,tPD=0,tPOn=0,tLt=0,tFtr=0;
-        document.getElementById('dailyBody').innerHTML=DAILY_RAW.map(r=>{
-            const isToday=r.d===today;
-            const oP=pct(r.ordOn,r.ordDel),pP=pct(r.prodOn,r.prodDel);
-            const br=Math.max(0,r.ordDel-r.ordOn-r.revisions);
-            tO+=r.ordTot;tD+=r.ordDel;tOn+=r.ordOn;tRet+=r.returns;tRev+=r.revisions;
-            tP+=r.prodTot;tPD+=r.prodDel;tPOn+=r.prodOn;tLt+=r.lt;tFtr+=r.ftr;
-            return`<tr class="${isToday?'today-row':''}">
-      <td class="tl"><strong>${r.d.slice(5)}</strong>${isToday?'<span class="tbadge">TODAY</span>':''}</td>
-      <td>${n(r.ordTot)}</td><td><span class="b bg">${n(r.ordDel)}</span></td>
-      <td>${r.ordTot-r.ordDel>0?`<span class="b bo">${n(r.ordTot-r.ordDel)}</span>`:'—'}</td>
-      <td>${pb(oP)}</td>
-      <td>${br>0?`<span class="b br">${n(br)}</span>`:'—'}</td>
-      <td>${r.returns>0?`<span class="b br">${n(r.returns)}</span>`:'—'}</td>
-      <td>${r.revisions>0?`<span class="b bp">${n(r.revisions)}</span>`:'—'}</td>
-      <td>${n(r.prodTot)}</td><td>${pb(pP)}</td>
-      <td>${r.lt>0?`<span class="b ba">${n(r.lt)}</span>`:'—'}</td>
-      <td>${r.ftr>0?`<span class="b ba">${n(r.ftr)}</span>`:'—'}</td>
-    </tr>`;
-        }).join('');
-        document.getElementById('dailyFoot').innerHTML=`<tr class="tfoot">
-    <td class="tl">MTD total</td><td>${n(tO)}</td><td>${n(tD)}</td><td>${n(tO-tD)}</td>
-    <td>${pb(pct(tOn,tD))}</td><td>${n(Math.max(0,tD-tOn-tRev))}</td>
-    <td>${n(tRet)}</td><td>${n(tRev)}</td>
-    <td>${n(tP)}</td><td>${pb(pct(tPOn,tPD))}</td>
-    <td>${n(tLt)}</td><td>${n(tFtr)}</td>
-  </tr>`;
-    }
-
-    // ─── PRODUCTS ────────────────────────────────────────────────────────────────
-    function renderProducts(){
-        const rows=filterProds(PRODUCTS_RAW);
-        let tOT=0,tOD=0,tOOn=0,tRet=0,tRev=0,tP=0,tPD=0,tPOn=0,tLt=0,tFtr=0,tBoth=0;
-        document.getElementById('productBody').innerHTML=rows.map(p=>{
-            const slaH=getSla(p.key);
-            const oP=pct(p.ordOn,p.ordDel),pP=pct(p.prodOn,p.prodDel);
-            const inPct=Math.round(p.prodOn/Math.max(p.prodDel,1)*100);
-            tOT+=p.ordTot;tOD+=p.ordDel;tOOn+=p.ordOn;tRet+=p.returns;tRev+=p.revisions;
-            tP+=p.prodTot;tPD+=p.prodDel;tPOn+=p.prodOn;tLt+=p.lt;tFtr+=p.ftr;tBoth+=p.both;
-            const br=Math.max(0,p.ordDel-p.ordOn-p.revisions);
-            return`<tr>
-      <td class="tl" style="font-weight:500">${p.key}</td>
-      <td style="text-align:center">${slaH}h</td>
-      <td style="border-left:2px solid var(--zborder)">${n(p.ordTot)}</td>
-      <td><span class="b bg">${n(p.ordDel)}</span></td>
-      <td>${p.ordTot-p.ordDel>0?`<span class="b bo">${n(p.ordTot-p.ordDel)}</span>`:'—'}</td>
-      <td>${pb(oP)}</td>
-      <td>${br>0?`<span class="b br">${n(br)}</span>`:'—'}</td>
-      <td class="col-sep"></td>
-      <td>${n(p.prodTot)}</td><td>${pb(pP)}</td>
-      <td>${p.lt?`<span class="b ba">${n(p.lt)}</span>`:'—'}</td>
-      <td>${p.returns?`<span class="b br">${n(p.returns)}</span>`:'—'}</td>
-      <td>${p.revisions?`<span class="b bp">${n(p.revisions)}</span>`:'—'}</td>
-      <td>${p.both?`<span class="b br">${n(p.both)}</span>`:'—'}</td>
-      <td><div class="scell"><div class="sbar"><div class="sin" style="width:${inPct}%"></div><div class="sout" style="width:${100-inPct}%"></div></div></div></td>
-    </tr>`;
-        }).join('');
-        document.getElementById('productFoot').innerHTML=`<tr class="tfoot">
-    <td class="tl">Total</td><td>—</td>
-    <td>${n(tOT)}</td><td>${n(tOD)}</td><td>${n(tOT-tOD)}</td>
-    <td>${pb(pct(tOOn,tOD))}</td><td>${n(Math.max(0,tOD-tOOn-tRev))}</td>
-    <td class="col-sep"></td>
-    <td>${n(tP)}</td><td>${pb(pct(tPOn,tPD))}</td>
-    <td>${n(tLt)}</td><td>${n(tRet)}</td><td>${n(tRev)}</td><td>${n(tBoth)}</td><td></td>
-  </tr>`;
-    }
-
-    // ─── ORDER DETAIL ─────────────────────────────────────────────────────────────
-    const PROD_KEYS=[['photo','Photography'],['floor','Floorplanner'],['meas','Measurement'],['cad','CAD Report'],['vid','Video'],['soc','Social media video'],['reel','Social Media Reel'],['tour','360 tour'],['drone','Drone photography'],['mat','Matterport'],['kuula','KuulaTour'],['dvid','Drone video'],['art','Artist impression'],['eve','Evening impression'],['wofl','WOFL']];
-
-    function renderOrders(filter){
-        let rows=filterLand(ORDERS_RAW);
-        if(filter)rows=rows.filter(r=>String(r.id).includes(filter));
-        document.getElementById('orderBody').innerHTML=rows.map(o=>{
-            const prods=PROD_KEYS.map(([k])=>o[k]).filter(Boolean);
-            const allOk=prods.every(p=>p.ok);
-            const hasRet=prods.some(p=>p.status==='return');
-            const hasRev=prods.some(p=>p.status==='revision');
-            const overallStatus=allOk?'on-target':hasRet?'return':hasRev?'revision':'breach';
-            const cells=PROD_KEYS.map(([k])=>{
-                const v=o[k];
-                if(!v)return`<td style="text-align:center;color:#ccc">—</td>`;
-                return`<td class="${statusCls(v.status)}" style="text-align:center">
-        <a class="plink" href="https://zone.zibber.nl/production/${v.id}" target="_blank">${v.id}</a>
-        <div style="font-size:10px;color:var(--zm)">${statusBadge(v.status)}</div>
-      </td>`;
-            }).join('');
-            const sBadge=allOk?'<span class="b bg">On target</span>':hasRet?'<span class="b br">Return</span>':hasRev?'<span class="b bp">Revision</span>':'<span class="b br">Breach</span>';
-            return`<tr>
-      <td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/${o.id}" target="_blank">${o.id}</a></td>
-      <td class="tl"><span class="b bb">${o.country}</span></td>
-      <td class="tl">${sBadge}</td>
-      <td class="tl"><div class="elinks">
-        <a class="elink" href="https://zone.zibber.nl/orders/${o.id}" target="_blank">Zone</a>
-        <a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~${o.id}" target="_blank">JOI</a>
-        <a class="elink" href="https://stream.bright-river.com/all/find/${o.id}" target="_blank">STREAM</a>
-      </div></td>
-      ${cells}
-    </tr>`;
-        }).join('');
-    }
-
-    // ─── BREACH TABLE ────────────────────────────────────────────────────────────
-    function renderBreach(filter){
-        let rows=filterLand(BREACH_RAW);
-        if(filter)rows=rows.filter(r=>String(r.id).includes(filter)||r.prod.toLowerCase().includes(filter.toLowerCase()));
-        document.getElementById('breachBody').innerHTML=rows.map(o=>{
-            const slaH=getSla(o.prod);
-            const ltNum=parseInt(o.lt);
-            const ltOver=!isNaN(ltNum)&&ltNum>slaH;
-            return`<tr>
-      <td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/${o.id}" target="_blank">${o.id}</a></td>
-      <td style="text-align:center"><span class="b bb">${o.country}</span></td>
-      <td>${o.prod}</td>
-      <td style="text-align:center">${o.created}</td>
-      <td style="text-align:center">${o.upload}</td>
-      <td style="text-align:center">${o.deadline}</td>
-      <td style="text-align:center;font-weight:600;color:${ltOver?'var(--zr)':'var(--zt)'}">${o.lt}</td>
-      <td style="text-align:center">${slaH}h</td>
-      <td style="text-align:center">${o.rev}</td>
-      <td style="text-align:center">${breachLabel(o.reason)}</td>
-      <td><span class="rtag" title="${o.return_reason||o.rev_notes||''}">${o.return_reason||o.rev_notes||'—'}</span></td>
-      <td class="tl"><div class="elinks">
-        <a class="elink" href="https://zone.zibber.nl/orders/${o.id}" target="_blank">Zone</a>
-        <a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~${o.id}" target="_blank">JOI</a>
-      </div></td>
-    </tr>`;
-        }).join('');
-    }
-
-    // ─── RETURNS & REVISIONS TAB ──────────────────────────────────────────────────
-    function buildReturnPie(){
-        const counts={};
-        filterLand(RETURNS_RAW).forEach(r=>{const k=r.return_reason||'Unknown';counts[k]=(counts[k]||0)+1;});
-        const labels=Object.keys(counts),data=Object.values(counts);
-        const colors=['#E24B4A','#EF9F27','#1F80F0','#2FC974','#8B5CF6','#F59E0B','#EC4899','#10B981'];
-        if(charts.retPie)charts.retPie.destroy();
-        charts.retPie=new Chart(document.getElementById('returnPie'),{
-            type:'doughnut',
-            data:{labels,datasets:[{data,backgroundColor:colors.slice(0,labels.length),borderWidth:2,borderColor:'#fff'}]},
-            options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
-                plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:6}},
-                    tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed}`}}
-                }
-            }
+            var wk=w.week;
+            var tr=document.createElement('tr');
+            tr.style.cssText='cursor:pointer;'+(isCur?'background:#FFFBEB':'');
+            tr.onclick=function(){toggleWowDrill(wk);};
+            tr.innerHTML=
+                '<td class="tl" style="font-weight:600">'+(w.label||w.week)+(isCur?'<span class="tbadge">NOW</span>':'')+'</td>'+
+                '<td>'+n(w.ordTot)+'</td>'+
+                '<td><span class="b bg">'+n(w.ordDel)+'</span></td>'+
+                '<td>'+pb(oP)+delta+'</td>'+
+                '<td>'+(br>0?'<span class="b br">'+n(br)+'</span>':'—')+'</td>'+
+                '<td>'+((w.returns||0)>0?'<span class="b br">'+n(w.returns)+'</span>':'—')+'</td>'+
+                '<td>'+((w.revisions||0)>0?'<span class="b bp">'+n(w.revisions)+'</span>':'—')+'</td>'+
+                '<td class="col-sep"></td>'+
+                '<td>'+n(w.prodTot)+'</td>'+
+                '<td>'+pb(pct(w.prodOn,w.prodDel))+'</td>'+
+                '<td>'+(w.lt>0?'<span class="b ba">'+n(w.lt)+'</span>':'—')+'</td>'+
+                '<td>'+(w.ftr>0?'<span class="b ba">'+n(w.ftr)+'</span>':'—')+'</td>';
+            return tr.outerHTML;
         });
+        document.getElementById('wowBody').innerHTML=rows.join('');
+        document.getElementById('wowFoot').innerHTML=
+            '<tr class="tfoot">'+
+            '<td class="tl">Total</td>'+
+            '<td>'+n(tO)+'</td><td>'+n(tD)+'</td>'+
+            '<td>'+pb(pct(tOn,tD))+'</td>'+
+            '<td>'+n(Math.max(0,tD-tOn))+'</td>'+
+            '<td>'+n(tRet)+'</td><td>'+n(tRev)+'</td>'+
+            '<td class="col-sep"></td>'+
+            '<td>'+n(tP)+'</td><td>'+pb(pct(tPOn,tPD))+'</td>'+
+            '<td>'+n(tLt)+'</td><td>'+n(tFtr)+'</td>'+
+            '</tr>';
     }
 
-    function buildRevisionPie(){
-        // Extract first 4 words of revision notes as category
-        const counts={};
-        filterLand(REVISIONS_RAW).forEach(r=>{
-            const k=r.rev_notes?r.rev_notes.substring(0,30)+'…':'No notes';
-            counts[k]=(counts[k]||0)+1;
-        });
-        const labels=Object.keys(counts),data=Object.values(counts);
-        const colors=['#8B5CF6','#A78BFA','#C4B5FD','#7C3AED','#6D28D9','#4C1D95'];
-        if(charts.revPie)charts.revPie.destroy();
-        charts.revPie=new Chart(document.getElementById('revisionPie'),{
-            type:'doughnut',
-            data:{labels,datasets:[{data,backgroundColor:colors.slice(0,labels.length),borderWidth:2,borderColor:'#fff'}]},
-            options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
-                plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:6}},
-                    tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed}`}}
-                }
-            }
-        });
-    }
-
-    function buildRetRevByProd(){
-        const prods=filterProds(PRODUCTS_RAW).filter(p=>p.returns>0||p.revisions>0);
-        if(charts.rrProd)charts.rrProd.destroy();
-        charts.rrProd=new Chart(document.getElementById('retRevByProd'),{
-            type:'bar',
-            data:{labels:prods.map(p=>p.key.substring(0,12)),datasets:[
-                    {label:'Returns (Zibber)',data:prods.map(p=>p.returns),backgroundColor:'rgba(226,75,74,.8)',borderRadius:3,borderSkipped:false},
-                    {label:'Revisions (client)',data:prods.map(p=>p.revisions),backgroundColor:'rgba(139,92,246,.7)',borderRadius:3,borderSkipped:false},
-                ]},
-            options:{responsive:true,maintainAspectRatio:false,
-                plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,padding:8}}},
-                scales:{x:{ticks:{font:{size:10},color:'#888'},grid:{display:false}},y:{ticks:{font:{size:10},color:'#888'},grid:{color:'rgba(0,0,0,.05)'}}}
-            }
-        });
-    }
-
-    function renderReturns(){
-        const rows=filterLand(RETURNS_RAW);
-        document.getElementById('returnsBody').innerHTML=rows.map(r=>`<tr>
-    <td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/${r.id}" target="_blank">${r.id}</a></td>
-    <td style="text-align:center"><span class="b bb">${r.country}</span></td>
-    <td>${r.prod}</td>
-    <td style="text-align:center">${r.appt_date}</td>
-    <td style="text-align:center"><span class="b br">${r.return_reason}</span></td>
-    <td><span class="rtag" title="${r.appt_notes}">${r.appt_notes||'—'}</span></td>
-    <td style="text-align:center;font-weight:600;color:var(--zr)">${r.lt}</td>
-    <td style="text-align:center">${r.sla_ok?'<span class="b bg">On target</span>':'<span class="b br">Breach</span>'}</td>
-    <td class="tl"><div class="elinks">
-      <a class="elink" href="https://zone.zibber.nl/orders/${r.id}" target="_blank">Zone</a>
-      <a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~${r.id}" target="_blank">JOI</a>
-    </div></td>
-  </tr>`).join('');
-    }
-
-    function renderRevisions(){
-        const rows=filterLand(REVISIONS_RAW);
-        document.getElementById('revisionsBody').innerHTML=rows.map(r=>`<tr>
-    <td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/${r.id}" target="_blank">${r.id}</a></td>
-    <td style="text-align:center"><span class="b bb">${r.country}</span></td>
-    <td>${r.prod}</td>
-    <td style="text-align:center">${r.rev_date}</td>
-    <td class="tl"><span class="tip"><span class="rtag">${r.rev_notes}</span></span></td>
-    <td style="text-align:center">${r.lt}</td>
-    <td style="text-align:center">${r.sla_ok?'<span class="b bg">On target</span>':'<span class="b bp">Revision breach</span>'}</td>
-    <td class="tl"><div class="elinks">
-      <a class="elink" href="https://zone.zibber.nl/orders/${r.id}" target="_blank">Zone</a>
-      <a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~${r.id}" target="_blank">JOI</a>
-    </div></td>
-  </tr>`).join('');
-    }
-
-    // ─── PERFORMANCE ─────────────────────────────────────────────────────────────
-    function renderPerf(){
-        const t=CFG.target;
-        document.getElementById('targetLabel').textContent=t+'%';
-        const rows=filterProds(PRODUCTS_RAW);
-        const oPs=rows.map(p=>pct(p.ordOn,p.ordDel));
-        const pPs=rows.map(p=>pct(p.prodOn,p.prodDel));
-        if(charts.perf)charts.perf.destroy();
-        charts.perf=new Chart(document.getElementById('perfChart'),{
-            type:'bar',
-            data:{labels:rows.map(p=>p.key.substring(0,12)),datasets:[
-                    {label:'Orders on target %',data:oPs,backgroundColor:oPs.map(v=>v>=t?'rgba(31,128,240,.8)':v>=(t-10)?'rgba(239,159,39,.8)':'rgba(226,75,74,.8)'),borderRadius:4,borderSkipped:false},
-                    {label:'Prod on target %',  data:pPs,backgroundColor:pPs.map(v=>v>=t?'rgba(47,201,116,.7)':v>=(t-10)?'rgba(239,159,39,.5)':'rgba(226,75,74,.5)'),borderRadius:4,borderSkipped:false},
-                ]},
-            options:{responsive:true,maintainAspectRatio:false,
-                plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(1)}%`}}},
-                scales:{x:{ticks:{font:{size:10},color:'#888'},grid:{display:false}},y:{min:0,max:100,ticks:{font:{size:10},color:'#888',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.05)'}}}
-            }
-        });
-        document.getElementById('perfGrid').innerHTML=rows.map(p=>{
-            const oP=pct(p.ordOn,p.ordDel),pP=pct(p.prodOn,p.prodDel);
-            const cls=pP>=t?'ok':pP>=(t-10)?'warn':'fail';
-            const barC=pP>=t?'var(--zg)':pP>=(t-10)?'var(--za)':'var(--zr)';
-            return`<div class="pcard ${cls}">
-      <div class="pcard-name">${p.key} <span class="b ${pP>=t?'bg':pP>=(t-10)?'ba':'br'}">${pP.toFixed(1)}%</span></div>
-      <div class="pstats">
-        <div class="pst"><div class="pst-lbl">Orders</div><div class="pst-val">${n(p.ordTot)}</div></div>
-        <div class="pst"><div class="pst-lbl">Orders on target</div><div class="pst-val ${oP>=t?'ok':'fail'}">${n(p.ordOn)} (${oP.toFixed(0)}%)</div></div>
-        <div class="pst"><div class="pst-lbl">Returns</div><div class="pst-val ${p.returns>0?'fail':'ok'}">${n(p.returns)}</div></div>
-        <div class="pst"><div class="pst-lbl">Revisions</div><div class="pst-val" style="color:var(--zp)">${n(p.revisions)}</div></div>
-      </div>
-      <div class="pbar-wrap">
-        <div class="pbar-labels"><span>Productions on target</span><span>${t}% target</span></div>
-        <div class="pbar"><div class="pbar-fill" style="width:${Math.min(pP,100)}%;background:${barC}"></div><div class="pbar-target" style="left:${Math.min(t,100)}%"></div></div>
-        <div class="pbar-note" style="color:${pP>=t?'#1a6b35':'var(--zr)'}">${pP>=t?'✓ On target':'✗ '+Math.abs(pP-t).toFixed(1)+'% below target'}</div>
-      </div>
-    </div>`;
-        }).join('');
-        document.getElementById('perfBody').innerHTML=rows.map(p=>{
-            const oP=pct(p.ordOn,p.ordDel),pP=pct(p.prodOn,p.prodDel);
-            const cls=pP>=t?'ok':pP>=(t-10)?'warn':'fail';
-            return`<tr>
-      <td class="tl" style="font-weight:500">${p.key}</td><td style="text-align:center">${t}%</td>
-      <td style="border-left:2px solid var(--zborder)">${n(p.ordTot)}</td>
-      <td><span class="b bg">${n(p.ordOn)}</span></td><td>${pb(oP)}</td>
-      <td class="col-sep"></td>
-      <td>${n(p.prodTot)}</td><td>${pb(pP)}</td>
-      <td>${p.returns?`<span class="b br">${n(p.returns)}</span>`:'—'}</td>
-      <td>${p.revisions?`<span class="b bp">${n(p.revisions)}</span>`:'—'}</td>
-      <td>${vsDelta(pP)}</td>
-    </tr>`;
-        }).join('');
-    }
-
-    // ─── CHIPS ───────────────────────────────────────────────────────────────────
-    function buildChips(){
-        document.getElementById('prodChips').innerHTML=PROD_CFG.map(p=>
-            `<span class="chip active" onclick="toggleChip(this,'${p.key.replace(/'/g,"\\'")}')">${p.key}</span>`
-        ).join('');
-        activeProds=new Set(PROD_CFG.map(p=>p.key));
-    }
     function toggleChip(el,key){
         el.classList.toggle('active');
         if(activeProds.has(key))activeProds.delete(key);else activeProds.add(key);
         renderAll();
+    }
+
+    // ─── WEEK DRILLDOWN ──────────────────────────────────────────────────────────
+    let selectedWeek = null;
+
+    function toggleWowDrill(wk) {
+        const sec = document.getElementById('wowDrillSection');
+        if (selectedWeek === wk) {
+            selectedWeek = null;
+            sec.style.display = 'none';
+            // clear highlighted row
+            document.querySelectorAll('#wowBody tr').forEach(r=>r.style.outline='');
+            return;
+        }
+        selectedWeek = wk || selectedWeek;
+        if (!selectedWeek) { sec.style.display='none'; return; }
+
+        // Find daily rows that belong to this week
+        const rows = DAILY_RAW.filter(r => {
+            const d = new Date(r.day || r.d);
+            const wkNum = 'W' + String(getWeekNum((r.day||r.d))).padStart(2,'0');
+            return wkNum === selectedWeek;
+        });
+
+        if (!rows.length) { sec.style.display='none'; return; }
+
+        const wkData = WEEKLY_RAW.find(w=>w.week===selectedWeek);
+        document.getElementById('wowDrillLabel').textContent = wkData ? wkData.label : selectedWeek;
+
+        document.getElementById('wowDrillBody').innerHTML = rows
+            .sort((a,b)=>(b.day||b.d).localeCompare(a.day||a.d))
+            .map(r=>{
+                const day = r.day||r.d;
+                const isToday = day === new Date().toISOString().slice(0,10);
+                const oP = pct(r.ordOn,r.ordDel), pP = pct(r.prodOn,r.prodDel);
+                const br = Math.max(0,r.ordDel-r.ordOn);
+                return`<tr${isToday?' style="background:#FFFBEB"':''}>
+        <td class="tl"><strong>${day}</strong>${isToday?'<span class="tbadge">TODAY</span>':''}</td>
+        <td>${n(r.ordTot)}</td><td>${pb(oP)}</td>
+        <td>${br>0?`<span class="b br">${n(br)}</span>`:'—'}</td>
+        <td>${n(r.prodTot)}</td><td>${pb(pP)}</td>
+        <td>${r.lt>0?`<span class="b ba">${n(r.lt)}</span>`:'—'}</td>
+        <td>${r.ftr>0?`<span class="b ba">${n(r.ftr)}</span>`:'—'}</td>
+      </tr>`;
+            }).join('');
+
+        sec.style.display = 'block';
+        sec.scrollIntoView({behavior:'smooth',block:'start'});
     }
 
     // ─── CONTROLS ────────────────────────────────────────────────────────────────
@@ -1145,9 +870,12 @@
         btn.classList.add('active');activeLand=v;renderAll();
     }
     function switchTab(t){
-        document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['overview','products','orders','breach','returns','perf'][i]===t));
-        document.querySelectorAll('.panel').forEach(p=>{p.style.display='';p.classList.remove('active');});
-        document.getElementById('panel-'+t).classList.add('active');
+        document.querySelectorAll('.tab').forEach(function(el,i){
+            el.classList.toggle('active',['overview','products','orders','breach','returns','perf'][i]===t);
+        });
+        document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+        var target=document.getElementById('panel-'+t);
+        if(target) target.classList.add('active');
     }
 
     // ─── SETTINGS ────────────────────────────────────────────────────────────────
@@ -1167,19 +895,6 @@
         PROD_CFG.forEach(p=>{const el=document.getElementById('sla_'+p.key.replace(/[\s.]/g,'_'));if(el)CFG.sla[p.key]=parseInt(el.value)||p.sla;});
         localStorage.setItem('zbV6Cfg',JSON.stringify(CFG));
         closeSettings();renderAll();
-    }
-
-    // ─── DATA LOADING ─────────────────────────────────────────────────────────────
-    async function loadData(){
-        const params=new URLSearchParams({country:activeLand});
-        const res=await fetch(`/dashboard/mtd?${params}`);
-        const data=await res.json();
-        DAILY_RAW    = data.daily;
-        PRODUCTS_RAW = data.products;
-        ORDERS_RAW   = data.orders;
-        BREACH_RAW   = data.breach;
-        RETURNS_RAW  = data.returns;
-        REVISIONS_RAW= data.revisions;
     }
 
     // ─── RENDER ALL ───────────────────────────────────────────────────────────────
