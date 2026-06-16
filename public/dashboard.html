@@ -864,6 +864,20 @@
         sec.scrollIntoView({behavior:'smooth',block:'start'});
     }
 
+    // ─── CHIPS ───────────────────────────────────────────────────────────────────
+    function buildChips(){
+        document.getElementById('prodChips').innerHTML=PROD_CFG.map(p=>
+            `<span class="chip active" onclick="toggleChip(this,'${p.key.replace(/'/g,"\\'")}')">${p.key}</span>`
+        ).join('');
+        activeProds=new Set(PROD_CFG.map(p=>p.key));
+    }
+    function toggleChip(el,key){
+        el.classList.toggle('active');
+        if(activeProds.has(key))activeProds.delete(key);else activeProds.add(key);
+        renderAll();
+    }
+
+
     // ─── CONTROLS ────────────────────────────────────────────────────────────────
     function setLand(btn,v){
         document.querySelectorAll('.lbtn').forEach(b=>b.classList.remove('active'));
