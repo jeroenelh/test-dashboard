@@ -1247,7 +1247,8 @@
     }
 
     // ─── RENDER ALL ───────────────────────────────────────────────────────────────
-    function renderAll(){
+    async function renderAll(){
+        await loadData();
         renderKPI();
         buildMainChart();
         buildBreachDonut();
