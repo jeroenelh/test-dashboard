@@ -171,6 +171,13 @@
         @keyframes spin{to{transform:rotate(360deg)}}
         .loading-text{color:#fff;font-size:14px;font-weight:500}
 
+        .exp-row{background:var(--zgr);cursor:pointer}
+        .exp-row:hover td{background:#EEF5FE!important}
+        .exp-row td:first-child::before{content:'▶ ';font-size:9px;color:var(--zb);margin-right:2px;display:inline-block;transition:transform .15s}
+        .exp-row.open td:first-child::before{transform:rotate(90deg)}
+        .sub-row td{background:#F8FBFF;font-size:11px;border-bottom:0.5px solid #DDE8F7;padding:5px 10px}
+        .sub-row:last-of-type td{border-bottom:1.5px solid var(--zbd)}
+        .sub-row td.sub-prod{padding-left:28px;font-weight:500}
         .footer{text-align:center;font-size:11px;color:var(--zm);margin-top:16px;padding-top:10px;border-top:0.5px solid var(--zbd)}
         @media(max-width:1200px){.kgrid{grid-template-columns:repeat(5,1fr)}.chart2{grid-template-columns:1fr}}
         @media(max-width:640px){.kgrid{grid-template-columns:repeat(2,1fr)}}
@@ -312,7 +319,7 @@
             </div>
         </div>
 
-        <div class="slbl">Overzicht per <span id="periodLabel">day</span> <span style="font-size:10px;font-weight:400;color:var(--zb)" id="clickHint">· click row for daily detail</span></div>
+        <div class="slbl">Overview per <span id="periodLabel">day</span> <span style="font-size:10px;font-weight:400;color:var(--zb)" id="clickHint">· click row for daily detail</span></div>
         <div class="tw sx">
             <table><thead><tr>
                 <th class="tl" style="min-width:140px">Period</th>
@@ -606,7 +613,7 @@
 
     // ─── HELPERS ─────────────────────────────────────────────────────────────────
     const n   = v => typeof v==='number'?Math.round(v).toLocaleString('nl'):v||'—';
-    const pct = (a,b) => b?Math.round(a/b*1000)/10:0;
+    const pct = (a,b) => b?Math.min(100,Math.round(a/b*1000)/10):0;
     const getSla = k => CFG.sla[k]||PROD_CFG.find(p=>p.key===k)?.sla||24;
     function pb(p){
         const t=CFG.target;
@@ -901,8 +908,8 @@
         var labels = rows.map(r=>r.label||r.period.slice(5));
         var vols   = rows.map(r=>r.appts||0);
         var breach = rows.map(r=>r.breach||0);
-        var onPct  = rows.map(r=>pct(r.on_target,r.delivered));
-        var ltPct  = rows.map(r=>pct((r.delivered||0)-(r.lt_breach||0),r.delivered||1));
+        var onPct  = rows.map(r=>Math.min(100,pct(r.on_target,r.delivered)));
+        var ltPct  = rows.map(r=>Math.min(100,pct((r.delivered||0)-(r.lt_breach||0),r.delivered||1)));
         var t = CFG.target;
         document.getElementById('tgtLbl').textContent=t+'%';
         document.getElementById('chartTitle').textContent=
@@ -924,8 +931,8 @@
                 plugins:{legend:{display:false},tooltip:{enabled:false,external:externalTooltip}},
                 scales:{
                     x:{ticks:{font:{size:10},color:'#888',autoSkip:true,maxTicksLimit:activePeriod==='day'?15:8,maxRotation:45},grid:{display:false}},
-                    yPct:{position:'left',min:0,max:100,ticks:{font:{size:10},color:'#888',callback:function(v){return v+'%';}},grid:{color:'rgba(0,0,0,.05)'}},
-                    yVol:{position:'right',beginAtZero:true,ticks:{font:{size:10},color:'rgba(31,128,240,.5)',padding:4,callback:function(v){return v>=1000?Math.round(v/1000)+'k':v;}},grid:{display:false}},
+                    yPct:{position:'left',min:0,max:105,ticks:{font:{size:10},color:'#888',callback:function(v){return v>100?'':v+'%';}},grid:{color:'rgba(0,0,0,.05)'}},
+                    yVol:{position:'right',min:0,beginAtZero:true,suggestedMax:10,ticks:{font:{size:10},color:'rgba(31,128,240,.5)',padding:4,callback:function(v){return v<0?'':v>=1000?Math.round(v/1000)+'k':v;}},grid:{display:false}},
                 }
             }
         });
@@ -1238,20 +1245,58 @@
     }
 
     // ─── RETURNS & REVISIES ───────────────────────────────────────────────────────
+    var activeRetReason = '';
+
     function buildReturnPie(){
         var counts={};
         filterLand(DATA.returns||[]).forEach(function(r){
-            var k=r.return_reason||'Onbekend';counts[k]=(counts[k]||0)+1;
+            var k=r.return_reason||'Unknown';counts[k]=(counts[k]||0)+1;
         });
-        var labels=Object.keys(counts),vals=Object.values(counts);
+        var labels=Object.keys(counts), vals=Object.values(counts);
         var colors=['#E24B4A','#EF9F27','#1F80F0','#2FC974','#8B5CF6','#F59E0B','#EC4899'];
+        var bgs=vals.length?colors.slice(0,labels.length):['#E2E8F0'];
+
         if(charts.retPie)charts.retPie.destroy();
-        charts.retPie=new Chart(document.getElementById('returnPie'),{type:'doughnut',
-            data:{labels:labels.length?labels:['No return data'],
-                datasets:[{data:vals.length?vals:[1],backgroundColor:vals.length?colors.slice(0,labels.length):['#E2E8F0'],borderWidth:2,borderColor:'#fff'}]},
-            options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
-                plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:6}},
-                    tooltip:{callbacks:{label:function(c){return c.label+': '+c.parsed;}}}}}
+        charts.retPie=new Chart(document.getElementById('returnPie'),{
+            type:'doughnut',
+            data:{
+                labels:labels.length?labels:['No return data'],
+                datasets:[{data:vals.length?vals:[1],backgroundColor:bgs,borderWidth:2,borderColor:'#fff'}]
+            },
+            options:{
+                responsive:true,maintainAspectRatio:false,cutout:'55%',
+                onClick:function(evt,els){
+                    if(!els.length){activeRetReason='';renderReturns();buildReturnPie();return;}
+                    var clicked=labels[els[0].index];
+                    activeRetReason=(activeRetReason===clicked)?'':clicked;
+                    renderReturns();
+                    buildReturnPie();
+                },
+                plugins:{
+                    legend:{
+                        position:'right',
+                        labels:{font:{size:10},boxWidth:10,padding:6,
+                            generateLabels:function(chart){
+                                var ds=chart.data.datasets[0];
+                                return chart.data.labels.map(function(lbl,i){
+                                    var active=activeRetReason===lbl;
+                                    return {text:(active?'✓ ':'')+lbl,fillStyle:bgs[i]||'#ccc',
+                                        strokeStyle:active?'#1F2E4A':'transparent',lineWidth:active?2:0,index:i};
+                                });
+                            }
+                        },
+                        onClick:function(e,legendItem){
+                            var clicked=labels[legendItem.index];
+                            activeRetReason=(activeRetReason===clicked)?'':clicked;
+                            renderReturns();
+                            buildReturnPie();
+                        }
+                    },
+                    tooltip:{callbacks:{label:function(c){
+                                return c.label+': '+c.parsed+(activeRetReason===c.label?' (active filter)':'');
+                            }}}
+                }
+            }
         });
     }
     function buildRevPie(){
@@ -1300,6 +1345,8 @@
                 '</tr>';
         }).join(''):'<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--zm);font-size:12px">Geen return data — <code>return_appointment = 1</code> in appointments</td></tr>';
     }
+    var _revOpenOrders = new Set();
+
     function renderRevisions(){
         var all = filterLand(DATA.revisions||[]);
 
@@ -1532,7 +1579,7 @@
         new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
     // Use loadMockData() during development, loadData() when API is live
     //loadMockData();
-    loadData(); // ← uncomment when API is ready
+    loadData();//  ← uncomment when API is ready
 </script>
 </body>
 </html>
