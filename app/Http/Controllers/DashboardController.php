@@ -56,7 +56,7 @@ class DashboardController
 
         $cacheKey = 'dashboard_v8_' . md5($country . date('Y-m-d-H'));
 
-        return Cache::remember($cacheKey, 300, function () use ($dateFrom, $dateTo, $country) {
+        return Cache::remember($cacheKey, 900, function () use ($dateFrom, $dateTo, $country) {
             $params = ['date_from' => $dateFrom, 'date_to' => $dateTo];
 
             // 1. Fetch all rows
@@ -290,55 +290,67 @@ class DashboardController
     {
         return "
             SELECT
-                o.id                            AS order_id,
-                o.created_at                    AS order_created,
-                o.status                        AS order_status,
-                p.id                            AS production_id,
-                p.product_group,
-                p.expected_delivery_date,
-                p.appointment_id,
-                p.status                        AS production_status,
-                a.scheduled_at                  AS appt_date,
-                a.return_appointment            AS is_return,
-                a.return_appointment_notes      AS return_reason,
-                a.notes                         AS appt_notes,
-                fh.created_at                   AS upload_timestamp,
-                d.id                            AS delivery_id,
-                d.created_at                    AS delivery_at,
-                d.is_revision                   AS delivery_is_revision,
-                COUNT(d2.id)                    AS total_deliveries,
-                COUNT(CASE WHEN d2.is_revision = 0 THEN 1 END) AS first_deliveries,
-                r.id                            AS revision_id,
-                r.notes                         AS revision_notes,
-                r.expected_delivery_at          AS revision_expected_at,
-                r.created_at                    AS revision_created_at,
-                r.status                        AS revision_status
-            FROM api.orders o
-            JOIN api.productions      p   ON p.order_id        = o.id
-            JOIN api.appointments     a   ON a.id              = p.appointment_id
-            JOIN api.flow_histories   fh  ON fh.processable_id = a.id
-            JOIN api.deliveries       d   ON d.production_id   = p.id
-                                         AND d.is_revision     = 0
-            JOIN api.deliveries       d2  ON d2.production_id  = p.id
-            LEFT JOIN api.revisions   r   ON r.production_id   = p.id
-            WHERE
-                p.appointment_id IS NOT NULL
-                AND p.appointment_id != 0
-                AND fh.processable_type LIKE '%appointment'
-                AND fh.action_id = 'complete'
-                AND fh.status    = 'upload'
-                AND a.scheduled_at >= :date_from
-                AND a.scheduled_at <  :date_to
-            GROUP BY
-                o.id, o.created_at, o.status,
-                p.id, p.product_group, p.expected_delivery_date,
-                p.appointment_id, p.status,
-                a.scheduled_at, a.return_appointment,
-                a.return_appointment_notes, a.notes,
-                fh.created_at, d.id, d.created_at, d.is_revision,
-                r.id, r.notes, r.expected_delivery_at,
-                r.created_at, r.status
-            ORDER BY a.scheduled_at DESC, o.id, p.id
+    o.id                                AS order_id,
+    o.created_at                        AS order_created,
+    o.status                            AS order_status,
+    p.id                                AS production_id,
+    p.product_group,
+    p.expected_delivery_date,
+    p.status                            AS production_status,
+    a.id                                AS appointment_id,
+    a.scheduled_at                      AS appt_date,
+    a.return_appointment                AS is_return,
+    a.return_appointment_notes          AS return_reason,
+    a.notes                             AS appt_notes,
+    fh.created_at                       AS upload_timestamp,
+    -- Delivery stats from pre-aggregated subquery
+    del.total_deliveries,
+    del.non_revision_deliveries,
+    del.first_delivery_at,
+    -- Revision stats from pre-aggregated subquery
+    rev.revision_count,
+    rev.revision_notes,
+    rev.revision_created_at,
+    rev.revision_expected_at,
+    rev.revision_status
+FROM api.orders o
+JOIN api.productions p
+    ON p.order_id = o.id
+    AND p.status IN ('delivered', 'manualUpload')
+JOIN api.appointments a
+    ON a.id = p.appointment_id
+    AND a.scheduled_at >= :date_from
+    AND a.scheduled_at <  :date_to
+JOIN api.flow_histories fh
+    ON fh.processable_id   = a.id
+    AND fh.processable_type LIKE '%appointment'
+    AND fh.action_id = 'complete'
+    AND fh.status    = 'upload'
+-- Pre-aggregated — no row explosion
+JOIN (
+    SELECT
+        production_id,
+        COUNT(*)                                           AS total_deliveries,
+        COUNT(CASE WHEN is_revision = 0 THEN 1 END)       AS non_revision_deliveries,
+        MIN(CASE WHEN is_revision = 0 THEN created_at END) AS first_delivery_at
+    FROM api.deliveries
+    GROUP BY production_id
+) del ON del.production_id = p.id
+LEFT JOIN (
+    SELECT
+        production_id,
+        COUNT(*)                  AS revision_count,
+        MAX(notes)                AS revision_notes,
+        MAX(created_at)           AS revision_created_at,
+        MAX(expected_delivery_at) AS revision_expected_at,
+        MAX(status)               AS revision_status
+    FROM api.revisions
+    GROUP BY production_id
+) rev ON rev.production_id = p.id
+WHERE
+    p.appointment_id IS NOT NULL
+    AND p.appointment_id != 0
+ORDER BY a.scheduled_at DESC, o.id, p.id;
         ";
     }
 
@@ -346,51 +358,60 @@ class DashboardController
     {
         return "
             SELECT
-                o.id                            AS order_id,
-                o.created_at                    AS order_created,
-                o.status                        AS order_status,
-                p.id                            AS production_id,
-                p.product_group,
-                p.expected_delivery_date,
-                p.appointment_id,
-                p.status                        AS production_status,
-                p.created_at                    AS appt_date,
-                0                               AS is_return,
-                NULL                            AS return_reason,
-                NULL                            AS appt_notes,
-                fh.created_at                   AS upload_timestamp,
-                d.id                            AS delivery_id,
-                d.created_at                    AS delivery_at,
-                d.is_revision                   AS delivery_is_revision,
-                COUNT(d2.id)                    AS total_deliveries,
-                COUNT(CASE WHEN d2.is_revision = 0 THEN 1 END) AS first_deliveries,
-                r.id                            AS revision_id,
-                r.notes                         AS revision_notes,
-                r.expected_delivery_at          AS revision_expected_at,
-                r.created_at                    AS revision_created_at,
-                r.status                        AS revision_status
-            FROM api.orders o
-            JOIN api.productions      p   ON p.order_id        = o.id
-            LEFT JOIN api.flow_histories fh ON fh.processable_id = p.id
-            JOIN api.deliveries       d   ON d.production_id   = p.id
-                                         AND d.is_revision     = 0
-            JOIN api.deliveries       d2  ON d2.production_id  = p.id
-            LEFT JOIN api.revisions   r   ON r.production_id   = p.id
-            WHERE
-                (p.appointment_id IS NULL OR p.appointment_id = 0)
-                AND fh.processable_type LIKE '%production'
-                AND fh.action_id = 'complete'
-                AND fh.status    = 'waitingOnClient'
-                AND p.created_at >= :date_from
-                AND p.created_at <  :date_to
-            GROUP BY
-                o.id, o.created_at, o.status,
-                p.id, p.product_group, p.expected_delivery_date,
-                p.appointment_id, p.status, p.created_at,
-                fh.created_at, d.id, d.created_at, d.is_revision,
-                r.id, r.notes, r.expected_delivery_at,
-                r.created_at, r.status
-            ORDER BY p.created_at DESC, o.id, p.id
+    o.id                                AS order_id,
+    o.created_at                        AS order_created,
+    o.status                            AS order_status,
+    p.id                                AS production_id,
+    p.product_group,
+    p.expected_delivery_date,
+    p.status                            AS production_status,
+    NULL                                AS appointment_id,
+    p.created_at                        AS appt_date,
+    0                                   AS is_return,
+    NULL                                AS return_reason,
+    NULL                                AS appt_notes,
+    fh.created_at                       AS upload_timestamp,
+    del.total_deliveries,
+    del.non_revision_deliveries,
+    del.first_delivery_at,
+    rev.revision_count,
+    rev.revision_notes,
+    rev.revision_created_at,
+    rev.revision_expected_at,
+    rev.revision_status
+FROM api.orders o
+JOIN api.productions p
+    ON p.order_id = o.id
+    AND p.status IN ('delivered', 'manualUpload')
+    AND (p.appointment_id IS NULL OR p.appointment_id = 0)
+    AND p.created_at >= :date_from
+    AND p.created_at <  :date_to
+LEFT JOIN api.flow_histories fh
+    ON fh.processable_id   = p.id
+    AND fh.processable_type LIKE '%production'
+    AND fh.action_id = 'complete'
+    AND fh.status    = 'waitingOnClient'
+JOIN (
+    SELECT
+        production_id,
+        COUNT(*)                                           AS total_deliveries,
+        COUNT(CASE WHEN is_revision = 0 THEN 1 END)       AS non_revision_deliveries,
+        MIN(CASE WHEN is_revision = 0 THEN created_at END) AS first_delivery_at
+    FROM api.deliveries
+    GROUP BY production_id
+) del ON del.production_id = p.id
+LEFT JOIN (
+    SELECT
+        production_id,
+        COUNT(*)                  AS revision_count,
+        MAX(notes)                AS revision_notes,
+        MAX(created_at)           AS revision_created_at,
+        MAX(expected_delivery_at) AS revision_expected_at,
+        MAX(status)               AS revision_status
+    FROM api.revisions
+    GROUP BY production_id
+) rev ON rev.production_id = p.id
+ORDER BY p.created_at DESC, o.id, p.id;
         ";
     }
 
