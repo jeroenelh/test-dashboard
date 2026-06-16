@@ -3,81 +3,110 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class DashboardController
 {
-    public function index(Request $request)
-    {
-        $this->setDatabase();
-        $dateFrom = $request->get('from', now()->subDays(31)->toDateTimeString());
-        $dateTo   = $request->get('to',   now()->toDateTimeString());
-        $country  = $request->get('country', 'ALL'); // NL / BE / DE / ALL
-
-        $rows = $this->fetchProductions($dateFrom, $dateTo, $country);
-
-        return response()->json([
-            'months'   => $this->aggregateMonths($rows),
-            'daily'    => $this->aggregateDaily($rows),
-            'weeks'    => $this->aggregateWeeks($rows),
-            'products' => $this->aggregateProducts($rows),
-            'orders'   => $this->aggregateOrders($rows),
-            'breach'   => $this->breachList($rows),
-        ]);
-    }
+    private const SLA_NORMS = [
+        'Photography'        => 24,
+        'Floorplanner'       => 24,
+        'Measurement'        => 24,
+        'CAD Report'         => 54,
+        'Video'              => 24,
+        'Social media video' => 24,
+        'Social Media Reel'  => 24,
+        '360 tour'           => 24,
+        'Drone photography'  => 54,
+        'Matterport'         => 24,
+        'KuulaTour'          => 24,
+        'Drone video'        => 24,
+        'Artist impression'  => 72,
+        'Evening impression' => 24,
+        'WOFL'               => 24,
+    ];
 
     public function mtd(Request $request)
     {
         $this->setDatabase();
         $country  = $request->get('country', 'ALL');
-
-        // MTD window: first day of current month to now
-        $dateFrom = now()->subDays(31)->toDateTimeString();
+        $dateFrom = now()->startOfMonth()->toDateTimeString();
         $dateTo   = now()->toDateTimeString();
 
-        $rows = $this->fetchProductions($dateFrom, $dateTo, $country);
+        $cacheKey = 'dashboard_v6_mtd_' . md5($country . date('Y-m-d-H'));
 
-        return response()->json([
-            'daily'    => $this->aggregateDaily($rows),
-            'products' => $this->aggregateProducts($rows),
-            'orders'   => $this->aggregateOrders($rows),
-            'breach'   => $this->breachList($rows),
-        ]);
+        return Cache::remember($cacheKey, 300, function () use ($dateFrom, $dateTo, $country) {
+            $rows = $this->fetchProductions($dateFrom, $dateTo, $country);
+
+            return response()->json([
+                'daily'     => $this->aggregateDaily($rows),
+                'products'  => $this->aggregateProducts($rows),
+                'orders'    => $this->aggregateOrders($rows),
+                'breach'    => $this->breachList($rows),
+                'returns'   => $this->returnsList($rows),   // NEW in v6
+                'revisions' => $this->revisionsList($rows), // NEW in v6
+            ]);
+        });
     }
 
-
-    // ── Fetch & merge both queries ────────────────────────────────────────────
-    private function fetchProductions(string $from, string $to, string $country): \Illuminate\Support\Collection
+    private function fetchProductions(string $from, string $to, string $country)
     {
         $params = ['date_from' => $from, 'date_to' => $to];
 
-        $withAppt    = DB::connection('live')->select($this->queryWith(), $params);
-        $withoutAppt = DB::connection('live')->select($this->queryWithout(), $params);
+        $rows = collect(array_merge(
+            DB::connection('live')->select($this->queryWithAppt(),    $params),
+            DB::connection('live')->select($this->queryWithoutAppt(), $params)
+        ))->map(function ($r) {
+            $isReturn = (bool)($r->is_return ?? false);
+            $hasRevisions = $r->revisions > 0;
 
-        $rows = collect(array_merge($withAppt, $withoutAppt))->map(function ($r) {
-            $ftr  = $r->revisions == 0;
-            $ltOk = $r->upload_timestamp <= $r->expected_delivery_date;
-            $sla  = $ftr && $ltOk;
+            // Lead time check
+            $ltOk = $r->upload_timestamp && $r->expected_delivery_date
+                ? $r->upload_timestamp <= $r->expected_delivery_date
+                : false;
 
+            // FTR: first time right = no revisions AND no return
+            $ftr = !$hasRevisions && !$isReturn;
+
+            // SLA: on target = lead time ok AND FTR
+            $slaOk = $ltOk && $ftr;
+
+            // Breach type — returns and revisions are separate categories
             $breachType = null;
-            if (!$ltOk && !$ftr) $breachType = 'both';
-            elseif (!$ltOk)      $breachType = 'lt';
-            elseif (!$ftr)       $breachType = 'ftr';
+            if ($slaOk) {
+                $breachType = null;
+            } elseif ($isReturn && !$ltOk) {
+                $breachType = 'lt+return';
+            } elseif ($isReturn) {
+                $breachType = 'return';
+            } elseif ($hasRevisions && !$ltOk) {
+                $breachType = 'lt+revision';
+            } elseif ($hasRevisions) {
+                $breachType = 'revision';
+            } elseif (!$ltOk) {
+                $breachType = 'lt';
+            }
 
-            $r->ftr         = $ftr;
-            $r->lt_ok       = $ltOk;
-            $r->sla_ok      = $sla;
-            $r->breach_type = $breachType;
-            $r->month       = Carbon::parse($r->order_created)->format('M');
-            $r->week        = 'W'.Carbon::parse($r->order_created)->isoWeek();
-            $r->day         = Carbon::parse($r->order_created)->toDateString();
+            $ltHours = $r->upload_timestamp && $r->order_created
+                ? Carbon::parse($r->upload_timestamp)
+                    ->diffInHours(Carbon::parse($r->order_created))
+                : null;
+
+            $r->ftr           = $ftr;
+            $r->lt_ok         = $ltOk;
+            $r->sla_ok        = $slaOk;
+            $r->is_return     = $isReturn;
+            $r->has_revisions = $hasRevisions;
+            $r->breach_type   = $breachType;
+            $r->lt_hours      = $ltHours;
+            $r->day           = Carbon::parse($r->order_created)->toDateString();
+            $r->country       = $r->country ?? '?'; // ⚠️ adjust to your schema
+
             return $r;
         });
 
-        // Country filter: assumes orders table has a country column
-        // Adjust field name to match your schema
         if ($country !== 'ALL') {
             $rows = $rows->where('country', $country);
         }
@@ -85,152 +114,188 @@ class DashboardController
         return $rows;
     }
 
-    // ── Aggregate: orders (order is on target only if ALL prods on target) ───
-    private function aggregateOrders(\Illuminate\Support\Collection $rows): array
+    // ── Daily aggregation ─────────────────────────────────────────────────────
+    private function aggregateDaily($rows): array
     {
-        return $rows->groupBy('order_id')->map(function ($prods, $orderId) {
-            $allOk     = $prods->every(fn($p) => $p->sla_ok);
-            $anyLt     = $prods->contains(fn($p) => !$p->lt_ok);
-            $anyFtr    = $prods->contains(fn($p) => !$p->ftr);
-            $first     = $prods->first();
-            return [
-                'id'           => $orderId,
-                'created'      => $first->order_created,
-                'day'          => $first->day,
-                'week'         => $first->week,
-                'month'        => $first->month,
-                'on_target'    => $allOk,
-                'breach_lt'    => $anyLt && !$anyFtr,
-                'breach_ftr'   => $anyFtr && !$anyLt,
-                'breach_both'  => $anyLt && $anyFtr,
-                'prods'        => $prods->map(fn($p) => [
-                    'production_id'  => $p->production_id,
-                    'product_group'  => $p->product_group,
-                    'sla_ok'         => $p->sla_ok,
-                    'lt_ok'          => $p->lt_ok,
-                    'ftr'            => $p->ftr,
-                    'breach_type'    => $p->breach_type,
-                    'delivery'       => $p->delivery,
-                    'revisions'      => $p->revisions,
-                ])->values(),
-            ];
-        })->values()->toArray();
-    }
+        $ordersByDay = $this->getOrdersCollection($rows)->groupBy('day');
 
-    // ── Aggregate: months ─────────────────────────────────────────────────────
-    private function aggregateMonths(\Illuminate\Support\Collection $rows): array
-    {
-        $orders = collect($this->aggregateOrders($rows));
-        return $orders->groupBy('month')->map(function ($ords, $month) use ($rows) {
-            $prods    = $rows->where('month', $month);
-            $ordDel   = $ords->count();
-            $ordOn    = $ords->where('on_target', true)->count();
-            $prodDel  = $prods->count();
-            $prodOn   = $prods->where('sla_ok', true)->count();
+        return $rows->groupBy('day')->map(function ($prods, $day) use ($ordersByDay) {
+            $ords = $ordersByDay->get($day, collect());
             return [
-                'm'        => $month,
-                'ord'      => $ordDel,
-                'ordDel'   => $ordDel,
-                'ordOn'    => $ordOn,
-                'prod'     => $prodDel,
-                'prodDel'  => $prodDel,
-                'prodOn'   => $prodOn,
-                'lt'       => $prods->where('breach_type', 'lt')->count(),
-                'ftr'      => $prods->where('breach_type', 'ftr')->count(),
-                'both'     => $prods->where('breach_type', 'both')->count(),
+                'd'         => $day,
+                'ordTot'    => $ords->count(),
+                'ordDel'    => $ords->count(),
+                'ordOn'     => $ords->where('on_target', true)->count(),
+                'returns'   => $prods->where('is_return', true)->count(),
+                'revisions' => $prods->where('has_revisions', true)->where('is_return', false)->count(),
+                'prodTot'   => $prods->count(),
+                'prodDel'   => $prods->count(),
+                'prodOn'    => $prods->where('sla_ok', true)->count(),
+                'lt'        => $prods->whereIn('breach_type', ['lt', 'lt+return', 'lt+revision'])->count(),
+                'ftr'       => $prods->whereIn('breach_type', ['return', 'revision'])->count(),
+                'both'      => $prods->whereIn('breach_type', ['lt+return', 'lt+revision'])->count(),
             ];
-        })->values()->toArray();
-    }
-
-    // ── Aggregate: daily ─────────────────────────────────────────────────────
-    private function aggregateDaily(\Illuminate\Support\Collection $rows): array
-    {
-        $orders = collect($this->aggregateOrders($rows));
-        return $orders->groupBy('day')->map(function ($ords, $day) use ($rows) {
-            $prods   = $rows->where('day', $day);
-            $prodCounts = [];
-            foreach (['Photography','Floorplanner','360 tour','Video','Measurement','CAD Report','Matterport','Social media video'] as $pg) {
-                $pg_rows = $prods->where('product_group', $pg);
-                $prodCounts[strtolower(str_replace([' ','360 '],['_','tour_'], $pg))] = [
-                    $pg_rows->where('sla_ok', true)->count(),
-                    $pg_rows->count(),
-                ];
-            }
-            return array_merge([
-                'd'    => $day,
-                'tot'  => $ords->count(),
-                'del'  => $ords->count(),
-                'on'   => $ords->where('on_target', true)->count(),
-            ], $prodCounts);
         })->values()->sortByDesc('d')->values()->toArray();
     }
 
-    // ── Aggregate: weekly ────────────────────────────────────────────────────
-    private function aggregateWeeks(\Illuminate\Support\Collection $rows): array
+    // ── Product group aggregation ─────────────────────────────────────────────
+    private function aggregateProducts($rows): array
     {
-        $orders = collect($this->aggregateOrders($rows));
-        return $orders->groupBy('week')->map(function ($ords, $week) use ($rows) {
-            $prods   = $rows->where('week', $week);
-            return [
-                'm'       => $week,
-                'ord'     => $ords->count(),
-                'ordDel'  => $ords->count(),
-                'ordOn'   => $ords->where('on_target', true)->count(),
-                'prod'    => $prods->count(),
-                'prodDel' => $prods->count(),
-                'prodOn'  => $prods->where('sla_ok', true)->count(),
-                'lt'      => $prods->where('breach_type', 'lt')->count(),
-                'ftr'     => $prods->where('breach_type', 'ftr')->count(),
-                'both'    => $prods->where('breach_type', 'both')->count(),
-            ];
-        })->values()->toArray();
-    }
+        $orders = $this->getOrdersCollection($rows);
 
-    // ── Aggregate: per product group ─────────────────────────────────────────
-    private function aggregateProducts(\Illuminate\Support\Collection $rows): array
-    {
-        $orders = collect($this->aggregateOrders($rows));
         return $rows->groupBy('product_group')->map(function ($prods, $group) use ($orders) {
-            // Orders that have at least one production of this group
-            $touchedOrderIds = $prods->pluck('order_id')->unique();
-            $touchedOrders   = $orders->whereIn('id', $touchedOrderIds);
+            $touchedOrders = $orders->whereIn('order_id', $prods->pluck('order_id')->unique());
             return [
-                'name'       => $group,
-                'ordTot'     => $touchedOrders->count(),
-                'ordDel'     => $touchedOrders->count(),
-                'ordOn'      => $touchedOrders->where('on_target', true)->count(),
-                'inProd'     => $prods->count(),
-                'prodDel'    => $prods->count(),
-                'prodOn'     => $prods->where('sla_ok', true)->count(),
-                'lt'         => $prods->where('breach_type', 'lt')->count(),
-                'ftr'        => $prods->where('breach_type', 'ftr')->count(),
-                'both'       => $prods->where('breach_type', 'both')->count(),
-                'reason'     => '', // populated from revisions / return notes when available
+                'key'       => $group,
+                'ordTot'    => $touchedOrders->count(),
+                'ordDel'    => $touchedOrders->count(),
+                'ordOn'     => $touchedOrders->where('on_target', true)->count(),
+                'returns'   => $prods->where('is_return', true)->count(),
+                'revisions' => $prods->where('has_revisions', true)->where('is_return', false)->count(),
+                'prodTot'   => $prods->count(),
+                'prodDel'   => $prods->count(),
+                'prodOn'    => $prods->where('sla_ok', true)->count(),
+                'lt'        => $prods->whereIn('breach_type', ['lt'])->count(),
+                'ftr'       => $prods->whereIn('breach_type', ['return', 'revision', 'lt+return', 'lt+revision'])->count(),
+                'both'      => $prods->whereIn('breach_type', ['lt+return', 'lt+revision'])->count(),
             ];
         })->values()->toArray();
     }
 
-    // ── Breach list ───────────────────────────────────────────────────────────
-    private function breachList(\Illuminate\Support\Collection $rows): array
+    // ── Order detail (flat, with product short keys) ──────────────────────────
+    private function aggregateOrders($rows): array
     {
-        return $rows->where('sla_ok', false)->map(fn($r) => [
-            'id'         => $r->order_id,
-            'country'    => $r->country ?? '—',
-            'prod'       => $r->product_group,
-            'key'        => strtolower(str_replace(' ', '_', $r->product_group)),
-            'created'    => $r->order_created,
-            'lt'         => $r->upload_timestamp
-                ? Carbon::parse($r->upload_timestamp)
-                    ->diffInHours(Carbon::parse($r->order_created))
-                : null,
-            'ftr'        => !$r->ftr,
-            'reason'     => $r->breach_type,
-            'retour'     => '', // add return reason field when available
-        ])->values()->toArray();
+        $keyMap = [
+            'Photography'        => 'photo',  'Floorplanner'       => 'floor',
+            'Measurement'        => 'meas',   'CAD Report'         => 'cad',
+            'Video'              => 'vid',    'Social media video'  => 'soc',
+            'Social Media Reel'  => 'reel',   '360 tour'           => 'tour',
+            'Drone photography'  => 'drone',  'Matterport'         => 'mat',
+            'KuulaTour'          => 'kuula',  'Drone video'        => 'dvid',
+            'Artist impression'  => 'art',    'Evening impression' => 'eve',
+            'WOFL'               => 'wofl',
+        ];
+
+        return $rows->groupBy('order_id')->map(function ($prods, $orderId) use ($keyMap) {
+            $allOk  = $prods->every(fn($p) => $p->sla_ok);
+            $first  = $prods->first();
+            $result = [
+                'id'        => $orderId,
+                'country'   => $first->country,
+                'on_target' => $allOk,
+            ];
+            foreach ($prods as $p) {
+                $key = $keyMap[$p->product_group] ?? null;
+                if ($key) {
+                    // Status for cell color: ok / lt / return / revision
+                    $status = $p->sla_ok ? 'ok'
+                        : ($p->is_return ? 'return'
+                            : ($p->has_revisions ? 'revision'
+                                : 'lt'));
+                    $result[$key] = [
+                        'id'     => $p->production_id,
+                        'ok'     => $p->sla_ok,
+                        'status' => $status,
+                    ];
+                }
+            }
+            return $result;
+        })->values()->toArray();
     }
+
+    // ── Breach list (lead time + return; excludes revision-only) ─────────────
+    private function breachList($rows): array
+    {
+        return $rows
+            ->where('sla_ok', false)
+            ->whereNotIn('breach_type', ['revision']) // revisions go to revisionsList
+            ->map(function ($r) {
+                return [
+                    'id'           => $r->order_id,
+                    'country'      => $r->country,
+                    'prod'         => $r->product_group,
+                    'created'      => $r->order_created
+                        ? Carbon::parse($r->order_created)->toDateString()
+                        : null,
+                    'upload'       => $r->upload_timestamp
+                        ? Carbon::parse($r->upload_timestamp)->format('Y-m-d H:i')
+                        : '—',
+                    'deadline'     => $r->expected_delivery_date
+                        ? Carbon::parse($r->expected_delivery_date)->format('Y-m-d H:i')
+                        : '—',
+                    'lt'           => $r->lt_hours !== null ? $r->lt_hours.'h' : '—',
+                    'sla'          => self::SLA_NORMS[$r->product_group] ?? 24,
+                    'rev'          => $r->revisions,
+                    'reason'       => $r->breach_type,
+                    'return_reason'=> $r->return_reason ?? '',
+                    'rev_notes'    => $r->revision_notes ?? '',
+                ];
+            })->values()->toArray();
+    }
+
+    // ── Returns list (NEW in v6) ──────────────────────────────────────────────
+    // From api.appointments where return_appointment = true
+    private function returnsList($rows): array
+    {
+        return $rows
+            ->where('is_return', true)
+            ->map(function ($r) {
+                return [
+                    'id'           => $r->order_id,
+                    'country'      => $r->country,
+                    'prod'         => $r->product_group,
+                    'appt_date'    => $r->appt_scheduled_at
+                        ? Carbon::parse($r->appt_scheduled_at)->toDateString()
+                        : null,
+                    'return_reason'=> $r->return_reason ?? '',  // picklist value
+                    'appt_notes'   => $r->appt_notes ?? '',     // free text
+                    'lt'           => $r->lt_hours !== null ? $r->lt_hours.'h' : '—',
+                    'sla_ok'       => $r->sla_ok,
+                    'breach_type'  => $r->breach_type,
+                ];
+            })->values()->toArray();
+    }
+
+    // ── Revisions list (NEW in v6) ────────────────────────────────────────────
+    // From api.revisions where notes != null, client-requested changes
+    private function revisionsList($rows): array
+    {
+        return $rows
+            ->where('has_revisions', true)
+            ->where('is_return', false) // returns are separate
+            ->filter(fn($r) => !empty($r->revision_notes))
+            ->map(function ($r) {
+                return [
+                    'id'          => $r->order_id,
+                    'country'     => $r->country,
+                    'prod'        => $r->product_group,
+                    'rev_date'    => $r->delivery_at
+                        ? Carbon::parse($r->delivery_at)->toDateString()
+                        : null,
+                    'rev_notes'   => $r->revision_notes ?? '', // free text from client
+                    'lt'          => $r->lt_hours !== null ? $r->lt_hours.'h' : '—',
+                    'sla_ok'      => $r->sla_ok,
+                    'breach_type' => $r->breach_type,
+                ];
+            })->values()->toArray();
+    }
+
+    // ── Helper: order-level collection ────────────────────────────────────────
+    private function getOrdersCollection($rows)
+    {
+        return $rows->groupBy('order_id')->map(function ($prods, $orderId) {
+            return (object)[
+                'order_id'   => $orderId,
+                'country'    => $prods->first()->country,
+                'day'        => $prods->first()->day,
+                'on_target'  => $prods->every(fn($p) => $p->sla_ok),
+            ];
+        })->values();
+    }
+
 
     // ── Raw SQL ───────────────────────────────────────────────────────────────
-    private function queryWith(): string { return "
+    private function queryWithAppt(): string { return "
         SELECT p.order_id, o.created_at AS order_created, p.id AS production_id,
                p.created_at AS production_created, p.description, p.product_group,
                p.expected_delivery_date, p.appointment_id,
@@ -253,7 +318,7 @@ class DashboardController
         ORDER BY p.order_id, p.id DESC
     "; }
 
-    private function queryWithout(): string { return "
+    private function queryWithoutAppt(): string { return "
         SELECT p.order_id, o.created_at AS order_created, p.id AS production_id,
                p.created_at AS production_created, p.description, p.product_group,
                p.expected_delivery_date, p.appointment_id,
