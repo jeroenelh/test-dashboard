@@ -256,10 +256,11 @@ class DashboardController
                 $ordProd    = $orderProductions->get($orderId);
                 $totalP     = (int)($ordProd?->total_productions ?? $prods->count());
                 $deliveredP = (int)($ordProd?->delivered_productions ?? $prods->count());
+                $inProgress = ($totalP - $deliveredP) > 0;
 
                 return (object)[
                     'order_id'    => $orderId,
-                    'on_target'   => $prods->every(fn($p) => $p->sla_ok),
+                    'on_target'   => !$inProgress && $prods->every(fn($p) => $p->sla_ok),
                     'in_progress' => ($totalP - $deliveredP) > 0,
                     'appt_date'   => $prods->first()->appt_date,
                     'country'     => $prods->first()->country,
