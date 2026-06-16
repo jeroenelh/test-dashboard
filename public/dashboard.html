@@ -158,6 +158,9 @@
         .sp-inp{width:65px;padding:4px 8px;border:0.5px solid var(--zborder);border-radius:var(--r);font-size:12px;text-align:right}
         .sp-inp:focus{outline:none;border-color:var(--zb)}
         .sp-save{width:100%;margin-top:14px;padding:9px;background:var(--zb);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer}
+        /* Column header tooltips */
+        thead th[title]{cursor:help;border-bottom:1px dashed rgba(255,255,255,.4)}
+        thead th[title]:hover{background:#2a3f63}
         .footer{text-align:center;font-size:11px;color:var(--zm);margin-top:20px;padding-top:10px;border-top:0.5px solid var(--zborder)}
         @media(max-width:1200px){.kgrid{grid-template-columns:repeat(5,1fr)}.chart-grid{grid-template-columns:1fr}.chart-grid-3{grid-template-columns:1fr}}
         @media(max-width:640px){.kgrid{grid-template-columns:repeat(2,1fr)}}
@@ -430,14 +433,14 @@
                 <th class="tl" style="min-width:90px">Order ID</th>
                 <th style="min-width:55px">Country</th>
                 <th style="min-width:140px">Product group</th>
-                <th style="min-width:95px">Order created</th>
-                <th style="min-width:100px">Upload time</th>
-                <th style="min-width:95px">SLA deadline</th>
-                <th style="min-width:75px">Lead time</th>
-                <th style="min-width:65px">SLA norm</th>
-                <th style="min-width:65px">Revisions</th>
-                <th style="min-width:120px">Breach type</th>
-                <th style="min-width:140px">Return reason</th>
+                <th style="min-width:105px" title="Date the order was placed">Order created ⓘ</th>
+                <th style="min-width:110px" title="Timestamp when photographer first uploaded the production">First upload ⓘ</th>
+                <th style="min-width:110px" title="Expected delivery date — upload must be before this for LT to be OK">SLA deadline ⓘ</th>
+                <th style="min-width:80px" title="Hours from order created to first upload (for context only — LT breach is based on upload vs deadline)">Turnaround ⓘ</th>
+                <th style="min-width:65px" title="SLA norm in hours for this product group">SLA norm ⓘ</th>
+                <th style="min-width:70px" title="Number of deliveries — more than 1 = FTR breach">Deliveries ⓘ</th>
+                <th style="min-width:110px">Breach type</th>
+                <th style="min-width:130px" title="Return reason from appointment (only available after return_appointment is added to queries)">Return reason ⓘ</th>
                 <th class="tl" style="min-width:60px">Links</th>
             </tr></thead>
             <tbody id="breachBody"></tbody>
@@ -473,11 +476,11 @@
                 <th class="tl" style="min-width:90px">Order ID</th>
                 <th style="min-width:55px">Country</th>
                 <th style="min-width:140px">Product group</th>
-                <th style="min-width:100px">Appointment date</th>
-                <th style="min-width:150px">Return reason</th>
-                <th style="min-width:200px">Appointment notes</th>
-                <th style="min-width:75px">Lead time</th>
-                <th style="min-width:120px">SLA status</th>
+                <th style="min-width:110px" title="Date the return appointment was scheduled">Appt. date ⓘ</th>
+                <th style="min-width:150px" title="Picklist value from return_appointment_notes — reason for the return visit">Return reason ⓘ</th>
+                <th style="min-width:200px" title="Free text notes from the appointment">Appt. notes ⓘ</th>
+                <th style="min-width:75px" title="Hours from order created to first upload">Lead time ⓘ</th>
+                <th style="min-width:100px">SLA status</th>
                 <th class="tl" style="min-width:60px">Links</th>
             </tr></thead>
             <tbody id="returnsBody"></tbody>
@@ -489,10 +492,12 @@
                 <th class="tl" style="min-width:90px">Order ID</th>
                 <th style="min-width:55px">Country</th>
                 <th style="min-width:140px">Product group</th>
-                <th style="min-width:100px">Revision date</th>
-                <th style="min-width:250px">Client instruction (revisions.notes)</th>
-                <th style="min-width:75px">Lead time</th>
-                <th style="min-width:120px">SLA status</th>
+                <th style="min-width:105px" title="Date the order was created in the system">Order created ⓘ</th>
+                <th style="min-width:105px" title="Date of first upload by photographer / production partner">First upload ⓘ</th>
+                <th style="min-width:105px" title="Expected delivery date based on SLA norm">SLA deadline ⓘ</th>
+                <th style="min-width:75px" title="Total days from order created to first upload">Turnaround ⓘ</th>
+                <th style="min-width:65px" title="Number of times this production was delivered">Deliveries ⓘ</th>
+                <th style="min-width:100px">LT status</th>
                 <th class="tl" style="min-width:60px">Links</th>
             </tr></thead>
             <tbody id="revisionsBody"></tbody>
@@ -1172,20 +1177,22 @@
 
     function renderRevisions(){
         if(!REVISIONS_RAW.length){
-            document.getElementById('revisionsBody').innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--zm)">Geen data</td></tr>';
+            document.getElementById('revisionsBody').innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--zm)">Geen data</td></tr>';
             return;
         }
         document.getElementById('revisionsBody').innerHTML=REVISIONS_RAW.map(function(r){
-            var cls=r.breach_type==='ftr'?'<span class="b ba">FTR breach</span>':r.breach_type==='both'?'<span class="b br">LT + FTR</span>':'<span class="b ba">Breach</span>';
+            var ltBadge=r.lt_ok?'<span class="b bg">LT ok</span>':'<span class="b br">LT breach</span>';
+            var days=r.turnaround_days!==null&&r.turnaround_days!==undefined?r.turnaround_days+'d':'—';
             return '<tr>'+
                 '<td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">'+r.id+'</a></td>'+
                 '<td style="text-align:center"><span class="b bb">'+(r.country||'?')+'</span></td>'+
                 '<td>'+(r.prod||'—')+'</td>'+
-                '<td style="text-align:center">'+(r.rev_date||'—')+'</td>'+
-                '<td style="text-align:center;font-weight:600">'+r.deliveries+' deliveries</td>'+
-                '<td><span class="rtag">'+(r.rev_notes||'—')+'</span></td>'+
-                '<td style="text-align:center">'+(r.lt_display||'—')+'</td>'+
-                '<td style="text-align:center">'+cls+'</td>'+
+                '<td style="text-align:center">'+(r.order_created||'—')+'</td>'+
+                '<td style="text-align:center">'+(r.first_upload||'—')+'</td>'+
+                '<td style="text-align:center">'+(r.deadline||'—')+'</td>'+
+                '<td style="text-align:center;font-weight:600">'+days+'</td>'+
+                '<td style="text-align:center;font-weight:600">'+r.deliveries+'</td>'+
+                '<td style="text-align:center">'+ltBadge+'</td>'+
                 '<td class="tl"><div class="elinks"><a class="elink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">Zone</a><a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~'+r.id+'" target="_blank">JOI</a></div></td>'+
                 '</tr>';
         }).join('');
