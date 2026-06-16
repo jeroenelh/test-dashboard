@@ -28,7 +28,6 @@ class DashboardController
         'WOFL'               => 24,
     ];
 
-    // Product group → short key used in order detail tab
     private const KEY_MAP = [
         'Photography'        => 'photo',
         'Floorplanner'       => 'floor',
@@ -48,251 +47,240 @@ class DashboardController
         'Spotlight'          => 'spot',
     ];
 
-    // ── MTD endpoint ──────────────────────────────────────────────────────────
-    public function mtd(Request $request)
+    public function v8(Request $request)
     {
         $this->setDatabase();
         $country  = $request->get('country', 'ALL');
-        $dateFrom = now()->startOfMonth()->toDateTimeString();
+        $dateFrom = now()->subDays(30)->startOfDay()->toDateTimeString();
         $dateTo   = now()->toDateTimeString();
 
-        $cacheKey = 'dashboard_v7_mtd_' . md5($country . date('Y-m-d-H'));
+        $cacheKey = 'dashboard_v8_' . md5($country . date('Y-m-d-H'));
 
         return Cache::remember($cacheKey, 300, function () use ($dateFrom, $dateTo, $country) {
-
             $params = ['date_from' => $dateFrom, 'date_to' => $dateTo];
 
-            // 1. Fetch all rows — multiple rows per production (one per delivery)
+            // 1. Fetch all rows
             $allRows = collect(array_merge(
                 DB::connection('live')->select($this->queryWithAppt(),    $params),
                 DB::connection('live')->select($this->queryWithoutAppt(), $params)
             ));
 
-            // 2. Count deliveries per production — this drives FTR
-            $deliveryCounts = $allRows
-                ->groupBy('production_id')
-                ->map(fn($rows) => $rows->count());
+            // 2. Enrich each row with SLA logic
+            $rows = $allRows->map(function ($r) {
+                // FTR: first_deliveries count == 1 (no re-deliveries excluding revisions)
+                $ftr  = (int)($r->first_deliveries ?? 1) === 1;
 
-            // 3. Deduplicate: keep FIRST delivery per production
-            //    First delivery upload_timestamp = when photographer first uploaded
-            $productions = $allRows
-                ->sortBy('delivery_id')
-                ->groupBy('production_id')
-                ->map(function ($rows) use ($deliveryCounts) {
-                    $row = $rows->first();
+                // Lead time: first upload <= expected delivery date
+                $ltOk = $r->upload_timestamp && $r->expected_delivery_date
+                    ? $r->upload_timestamp <= $r->expected_delivery_date
+                    : false;
 
-                    $deliveryCount = $deliveryCounts[$row->production_id] ?? 1;
-                    $ftr  = $deliveryCount === 1;
-                    $ltOk = $row->upload_timestamp && $row->expected_delivery_date
-                        ? $row->upload_timestamp <= $row->expected_delivery_date
-                        : false;
-                    $slaOk = $ftr && $ltOk;
+                // Return = Zibber fault, always a breach
+                $isReturn = (bool)($r->is_return ?? false);
 
-                    $breachType = null;
-                    if (!$slaOk) {
-                        if (!$ltOk && !$ftr) $breachType = 'both';
-                        elseif (!$ltOk)      $breachType = 'lt';
-                        else                 $breachType = 'ftr';
-                    }
+                $slaOk = $ftr && $ltOk && !$isReturn;
 
-                    $row->delivery_count = $deliveryCount;
-                    $row->ftr            = $ftr;
-                    $row->lt_ok          = $ltOk;
-                    $row->sla_ok         = $slaOk;
-                    $row->breach_type    = $breachType;
-                    $row->day            = Carbon::parse($row->order_created)->toDateString();
-                    $row->week           = 'W' . Carbon::parse($row->order_created)->isoWeek();
-                    // ⚠️ country: adjust field name to match your schema
-                    $row->country        = $row->country ?? '?';
+                $breachType = null;
+                if (!$slaOk) {
+                    if ($isReturn && !$ltOk) $breachType = 'lt+ret';
+                    elseif ($isReturn)       $breachType = 'ret';
+                    elseif (!$ltOk && !$ftr) $breachType = 'both';
+                    elseif (!$ltOk)          $breachType = 'lt';
+                    else                     $breachType = 'ftr';
+                }
 
-                    return $row;
-                })
-                ->values();
+                $turnaroundH = $r->upload_timestamp && $r->appt_date
+                    ? Carbon::parse($r->upload_timestamp)
+                        ->diffInHours(Carbon::parse($r->appt_date))
+                    : null;
 
-            // 4. Apply country filter
+                $r->ftr          = $ftr;
+                $r->lt_ok        = $ltOk;
+                $r->is_return    = $isReturn;
+                $r->sla_ok       = $slaOk;
+                $r->breach_type  = $breachType;
+                $r->turnaround_h = $turnaroundH;
+                $r->appt_day     = Carbon::parse($r->appt_date)->toDateString();
+                // ⚠️ country: add via orders JOIN to addresses or clients table
+                $r->country      = $r->country ?? '?';
+
+                return $r;
+            });
+
+            // 3. Country filter
             if ($country !== 'ALL') {
-                $productions = $productions->where('country', $country);
+                $rows = $rows->where('country', $country);
             }
 
-            // 5. Build order-level collection
-            //    Order is on target only if ALL its productions are on target
-            $orderMap = $productions
-                ->groupBy('order_id')
-                ->map(fn($prods) => (object)[
-                    'order_id'  => $prods->first()->order_id,
-                    'on_target' => $prods->every(fn($p) => $p->sla_ok),
-                    'day'       => $prods->first()->day,
-                    'week'      => $prods->first()->week,
-                    'country'   => $prods->first()->country,
-                ])
-                ->values();
+            // 4. Build order-level collection
+            $orderMap = $rows->groupBy('order_id')->map(fn($prods) => (object)[
+                'order_id'   => $prods->first()->order_id,
+                'on_target'  => $prods->every(fn($p) => $p->sla_ok),
+                'day'        => $prods->first()->appt_day,
+                'country'    => $prods->first()->country,
+                'order_date' => $prods->first()->order_created
+                    ? Carbon::parse($prods->first()->order_created)->toDateString() : null,
+                'appt_date'  => $prods->first()->appt_day,
+            ])->values();
 
             return response()->json([
-                'daily'     => $this->aggregateDaily($productions, $orderMap),
-                'weekly'    => $this->aggregateWeekly($productions, $orderMap),
-                'products'  => $this->aggregateProducts($productions, $orderMap),
-                'orders'    => $this->aggregateOrders($productions, $orderMap),
-                'breach'    => $this->breachList($productions),
-                'returns'   => [], // add when return_appointment included in queries
-                'revisions' => $this->revisionsList($productions),
+                'periods'   => $this->aggregatePeriods($rows, $orderMap),
+                'products'  => $this->aggregateProducts($rows, $orderMap),
+                'orders'    => $this->aggregateOrders($rows, $orderMap),
+                'breach'    => $this->breachList($rows),
+                'returns'   => $this->returnsList($rows),
+                'revisions' => $this->revisionsList($rows),
             ]);
         });
     }
 
-    // ── Aggregate: daily ──────────────────────────────────────────────────────
-    private function aggregateDaily($prods, $orders): array
+    // ── Aggregate: daily periods ──────────────────────────────────────────────
+    private function aggregatePeriods($rows, $orderMap): array
     {
-        $ordersByDay = $orders->groupBy('day');
+        $ordersByDay = $orderMap->groupBy('day');
 
-        return $prods->groupBy('day')->map(function ($p, $day) use ($ordersByDay) {
-            $ords = $ordersByDay->get($day, collect());
-            return [
-                'd'         => $day,
-                'ordTot'    => $ords->count(),
-                'ordDel'    => $ords->count(),
-                'ordOn'     => $ords->where('on_target', true)->count(),
-                'returns'   => 0,
-                'revisions' => $p->where('delivery_count', '>', 1)->count(),
-                'prodTot'   => $p->count(),
-                'prodDel'   => $p->count(),
-                'prodOn'    => $p->where('sla_ok', true)->count(),
-                'lt'        => $p->where('breach_type', 'lt')->count(),
-                'ftr'       => $p->where('breach_type', 'ftr')->count(),
-                'both'      => $p->where('breach_type', 'both')->count(),
-            ];
-        })->values()->sortByDesc('d')->values()->toArray();
+        return $rows->groupBy('appt_day')
+            ->map(function ($prods, $day) use ($ordersByDay) {
+                $ords    = $ordersByDay->get($day, collect());
+                $ordTot  = $ords->count();
+                $ordDel  = $ords->where('on_target', '!=', null)->count(); // all in query are delivered
+                $ordOn   = $ords->where('on_target', true)->count();
+                $ordProg = 0; // requires separate open orders query — see section 8
+
+                return [
+                    'period'      => $day,
+                    'label'       => Carbon::parse($day)->format('d-m'),
+                    'type'        => 'day',
+                    'country'     => null, // aggregated, use country param on API
+                    'appts'       => $ordTot,
+                    'delivered'   => $ordDel,
+                    'in_progress' => $ordProg,
+                    'on_target'   => $ordOn,
+                    'breach'      => $ordDel - $ordOn,
+                    'lt_breach'   => $prods->whereIn('breach_type', ['lt','both','lt+ret'])->count(),
+                    'ftr_breach'  => $prods->whereIn('breach_type', ['ftr','both'])->count(),
+                    'returns'     => $prods->where('is_return', true)->count(),
+                    'revisions'   => $prods->whereNotNull('revision_id')->pluck('order_id')->unique()->count(),
+                ];
+            })
+            ->values()
+            ->sortBy('period')
+            ->values()
+            ->toArray();
     }
 
-    // ── Aggregate: weekly ────────────────────────────────────────────────────
-    private function aggregateWeekly($prods, $orders): array
+    // ── Aggregate: per product group ──────────────────────────────────────────
+    private function aggregateProducts($rows, $orderMap): array
     {
-        $ordersByWeek = $orders->groupBy('week');
+        return $rows->groupBy('product_group')
+            ->map(function ($prods, $group) use ($orderMap) {
+                $orderIds    = $prods->pluck('order_id')->unique();
+                $touchedOrds = $orderMap->whereIn('order_id', $orderIds);
+                $del         = $touchedOrds->count();
+                $on          = $touchedOrds->where('on_target', true)->count();
 
-        return $prods->groupBy('week')->map(function ($p, $week) use ($ordersByWeek, $prods) {
-            $ords  = $ordersByWeek->get($week, collect());
-            $first = Carbon::parse($p->first()->order_created ?? now());
-            $mon   = $first->copy()->startOfWeek()->format('d M');
-            $sun   = $first->copy()->endOfWeek()->format('d M');
-
-            return [
-                'week'      => $week,
-                'label'     => "{$week} · {$mon} – {$sun}",
-                'ordTot'    => $ords->count(),
-                'ordDel'    => $ords->count(),
-                'ordOn'     => $ords->where('on_target', true)->count(),
-                'returns'   => 0,
-                'revisions' => $p->where('delivery_count', '>', 1)->count(),
-                'prodTot'   => $p->count(),
-                'prodDel'   => $p->count(),
-                'prodOn'    => $p->where('sla_ok', true)->count(),
-                'lt'        => $p->where('breach_type', 'lt')->count(),
-                'ftr'       => $p->where('breach_type', 'ftr')->count(),
-                'both'      => $p->where('breach_type', 'both')->count(),
-            ];
-        })->values()->sortBy('week')->values()->toArray();
+                return [
+                    'key'         => $group,
+                    'sla_norm'    => self::SLA_NORMS[$group] ?? 24,
+                    'appts'       => $del,
+                    'delivered'   => $del,
+                    'in_progress' => 0,
+                    'on_target'   => $on,
+                    'breach'      => $del - $on,
+                    'lt_breach'   => $prods->whereIn('breach_type', ['lt','both','lt+ret'])->count(),
+                    'ftr_breach'  => $prods->whereIn('breach_type', ['ftr','both'])->count(),
+                    'returns'     => $prods->where('is_return', true)->count(),
+                    'revisions'   => $prods->whereNotNull('revision_id')->count(),
+                ];
+            })
+            ->values()
+            ->toArray();
     }
 
-    // ── Aggregate: per product group ─────────────────────────────────────────
-    private function aggregateProducts($prods, $orders): array
+    // ── Aggregate: order detail tab ───────────────────────────────────────────
+    private function aggregateOrders($rows, $orderMap): array
     {
-        return $prods->groupBy('product_group')->map(function ($p, $group) use ($orders) {
-            $orderIds    = $p->pluck('order_id')->unique();
-            $touchedOrds = $orders->whereIn('order_id', $orderIds);
-
-            return [
-                'key'       => $group,
-                'ordTot'    => $touchedOrds->count(),
-                'ordDel'    => $touchedOrds->count(),
-                'ordOn'     => $touchedOrds->where('on_target', true)->count(),
-                'returns'   => 0,
-                'revisions' => $p->where('delivery_count', '>', 1)->count(),
-                'prodTot'   => $p->count(),
-                'prodDel'   => $p->count(),
-                'prodOn'    => $p->where('sla_ok', true)->count(),
-                'lt'        => $p->where('breach_type', 'lt')->count(),
-                'ftr'       => $p->where('breach_type', 'ftr')->count(),
-                'both'      => $p->where('breach_type', 'both')->count(),
-            ];
-        })->values()->toArray();
-    }
-
-    // ── Aggregate: orders (for Order detail tab) ─────────────────────────────
-    private function aggregateOrders($prods, $orders): array
-    {
-        return $prods->groupBy('order_id')->map(function ($p, $orderId) use ($orders) {
-            $ord    = $orders->firstWhere('order_id', $orderId);
+        return $rows->groupBy('order_id')->map(function ($prods, $orderId) use ($orderMap) {
+            $ord    = $orderMap->firstWhere('order_id', $orderId);
             $result = [
-                'id'        => (string) $orderId,
-                'country'   => $p->first()->country,
-                'on_target' => $ord ? $ord->on_target : false,
+                'id'         => (string) $orderId,
+                'country'    => $prods->first()->country,
+                'order_date' => $ord?->order_date,
+                'appt_date'  => $ord?->appt_date,
+                'on_target'  => $ord?->on_target ?? false,
             ];
-            foreach ($p as $prod) {
-                $key = self::KEY_MAP[$prod->product_group] ?? null;
-                if ($key) {
-                    $status = $prod->sla_ok ? 'ok'
-                        : ($prod->breach_type === 'lt'  ? 'lt'
-                            : ($prod->breach_type === 'ftr' ? 'ftr' : 'both'));
-                    $result[$key] = [
-                        'id'     => (string) $prod->production_id,
-                        'ok'     => $prod->sla_ok,
-                        'status' => $status,
-                        'del'    => $prod->delivery_count,
-                    ];
-                }
+            foreach ($prods as $p) {
+                $key = self::KEY_MAP[$p->product_group] ?? null;
+                if (!$key) continue;
+                $status = $p->sla_ok ? 'ok'
+                    : (str_contains($p->breach_type ?? '', 'ret') ? 'return'
+                        : ($p->breach_type === 'ftr' || $p->breach_type === 'both' ? 'ftr'
+                            : 'lt'));
+                $result[$key] = [
+                    'id'         => (string) $p->production_id,
+                    'ok'         => $p->sla_ok,
+                    'status'     => $status,
+                    'deliveries' => (int)($p->total_deliveries ?? 1),
+                ];
             }
             return $result;
         })->values()->toArray();
     }
 
-    // ── Breach list (for SLA breach tab) ────────────────────────────────────
-    private function breachList($prods): array
+    // ── Breach list ───────────────────────────────────────────────────────────
+    private function breachList($rows): array
     {
-        return $prods->where('sla_ok', false)->map(function ($r) {
-            $ltHours = $r->upload_timestamp && $r->order_created
-                ? Carbon::parse($r->upload_timestamp)
-                    ->diffInHours(Carbon::parse($r->order_created))
-                : null;
-
+        return $rows->where('sla_ok', false)->map(function ($r) {
             return [
-                'id'         => (string) $r->order_id,
-                'country'    => $r->country,
-                'prod'       => $r->product_group,
-                'created'    => Carbon::parse($r->order_created)->toDateString(),
-                'upload'     => $r->upload_timestamp
+                'id'           => (string) $r->order_id,
+                'country'      => $r->country,
+                'prod'         => $r->product_group,
+                'appt_date'    => $r->appt_day,
+                'first_upload' => $r->upload_timestamp
                     ? Carbon::parse($r->upload_timestamp)->format('Y-m-d H:i') : '—',
-                'deadline'   => $r->expected_delivery_date
+                'deadline'     => $r->expected_delivery_date
                     ? Carbon::parse($r->expected_delivery_date)->format('Y-m-d H:i') : '—',
-                'lt_display' => $ltHours !== null ? round($ltHours) . 'h' : '—',
-                'lt_vs_exp'  => $r->upload_timestamp && $r->expected_delivery_date
-                    ? round(Carbon::parse($r->upload_timestamp)
-                        ->diffInHours(Carbon::parse($r->expected_delivery_date), false), 1)
-                    : null,
-                'sla'        => self::SLA_NORMS[$r->product_group] ?? 24,
-                'deliveries' => $r->delivery_count,
-                'reason'     => $r->breach_type,
-                'return_reason' => '',  // populate when return_appointment added
-                'rev_notes'  => '',     // populate when revisions.notes added
+                'turnaround_h' => $r->turnaround_h,
+                'sla_norm'     => self::SLA_NORMS[$r->product_group] ?? 24,
+                'deliveries'   => (int)($r->total_deliveries ?? 1),
+                'reason'       => $r->breach_type,
+                'return_reason'=> $r->return_reason ?? '',
             ];
         })->values()->toArray();
     }
 
-    // ── Revisions list (for Returns & Revisions tab) ─────────────────────────
-    // FTR breach = multiple deliveries = production was re-delivered
-    private function revisionsList($prods): array
+    // ── Returns list (return_appointment = 1) ─────────────────────────────────
+    private function returnsList($rows): array
     {
-        return $prods->where('delivery_count', '>', 1)->map(function ($r) {
-            $ltHours = $r->upload_timestamp && $r->order_created
-                ? Carbon::parse($r->upload_timestamp)
-                    ->diffInHours(Carbon::parse($r->order_created))
-                : null;
+        return $rows->where('is_return', true)->map(function ($r) {
+            return [
+                'id'           => (string) $r->order_id,
+                'country'      => $r->country,
+                'prod'         => $r->product_group,
+                'return_date'  => $r->appt_day,
+                'return_reason'=> $r->return_reason ?? '',
+                'appt_notes'   => $r->appt_notes ?? '',
+                'upload'       => $r->upload_timestamp
+                    ? Carbon::parse($r->upload_timestamp)->format('Y-m-d H:i') : '—',
+                'sla_ok'       => $r->sla_ok,
+            ];
+        })->values()->toArray();
+    }
 
+    // ── Revisions list (klant verzoek) ────────────────────────────────────────
+    private function revisionsList($rows): array
+    {
+        return $rows->whereNotNull('revision_id')->map(function ($r) {
             return [
                 'id'          => (string) $r->order_id,
+                'country'     => $r->country,
                 'prod'        => $r->product_group,
-                'deliveries'  => $r->delivery_count,
-                'lt_display'  => $ltHours !== null ? round($ltHours) . 'h' : '—',
-                'sla_ok'      => $r->sla_ok,
-                'breach_type' => $r->breach_type,
+                'rev_date'    => $r->revision_created_at
+                    ? Carbon::parse($r->revision_created_at)->toDateString() : '—',
+                'notes'       => $r->revision_notes ?? '',
+                'expected_at' => $r->revision_expected_at
+                    ? Carbon::parse($r->revision_expected_at)->toDateString() : '—',
+                'status'      => $r->revision_status ?? 'pending',
             ];
         })->values()->toArray();
     }
@@ -302,35 +290,55 @@ class DashboardController
     {
         return "
             SELECT
-                p.order_id,
-                o.created_at                AS order_created,
-                p.id                        AS production_id,
+                o.id                            AS order_id,
+                o.created_at                    AS order_created,
+                o.status                        AS order_status,
+                p.id                            AS production_id,
                 p.product_group,
                 p.expected_delivery_date,
                 p.appointment_id,
-                fh.created_at               AS upload_timestamp,
-                d.id                        AS delivery_id,
-                d.created_at                AS delivery_at,
-                COUNT(r.id)                 AS revisions
-            FROM api.productions p
-            JOIN api.orders           o   ON o.id  = p.order_id
-            JOIN api.appointments     a   ON a.id  = p.appointment_id
+                p.status                        AS production_status,
+                a.scheduled_at                  AS appt_date,
+                a.return_appointment            AS is_return,
+                a.return_appointment_notes      AS return_reason,
+                a.notes                         AS appt_notes,
+                fh.created_at                   AS upload_timestamp,
+                d.id                            AS delivery_id,
+                d.created_at                    AS delivery_at,
+                d.is_revision                   AS delivery_is_revision,
+                COUNT(d2.id)                    AS total_deliveries,
+                COUNT(CASE WHEN d2.is_revision = 0 THEN 1 END) AS first_deliveries,
+                r.id                            AS revision_id,
+                r.notes                         AS revision_notes,
+                r.expected_delivery_at          AS revision_expected_at,
+                r.created_at                    AS revision_created_at,
+                r.status                        AS revision_status
+            FROM api.orders o
+            JOIN api.productions      p   ON p.order_id        = o.id
+            JOIN api.appointments     a   ON a.id              = p.appointment_id
             JOIN api.flow_histories   fh  ON fh.processable_id = a.id
             JOIN api.deliveries       d   ON d.production_id   = p.id
-            LEFT JOIN api.revisions   r   ON r.delivery_id     = d.id
+                                         AND d.is_revision     = 0
+            JOIN api.deliveries       d2  ON d2.production_id  = p.id
+            LEFT JOIN api.revisions   r   ON r.production_id   = p.id
             WHERE
-                p.appointment_id != 0
+                p.appointment_id IS NOT NULL
+                AND p.appointment_id != 0
                 AND fh.processable_type LIKE '%appointment'
                 AND fh.action_id = 'complete'
                 AND fh.status    = 'upload'
-                AND p.created_at >= :date_from
-                AND p.created_at <  :date_to
-                AND (p.status = 'delivered' OR p.status = 'manualUpload')
+                AND a.scheduled_at >= :date_from
+                AND a.scheduled_at <  :date_to
             GROUP BY
-                p.order_id, o.created_at, p.id, p.product_group,
-                p.expected_delivery_date, p.appointment_id,
-                fh.created_at, d.id, d.created_at
-            ORDER BY p.order_id, p.id ASC
+                o.id, o.created_at, o.status,
+                p.id, p.product_group, p.expected_delivery_date,
+                p.appointment_id, p.status,
+                a.scheduled_at, a.return_appointment,
+                a.return_appointment_notes, a.notes,
+                fh.created_at, d.id, d.created_at, d.is_revision,
+                r.id, r.notes, r.expected_delivery_at,
+                r.created_at, r.status
+            ORDER BY a.scheduled_at DESC, o.id, p.id
         ";
     }
 
@@ -338,38 +346,53 @@ class DashboardController
     {
         return "
             SELECT
-                p.order_id,
-                o.created_at                AS order_created,
-                p.id                        AS production_id,
+                o.id                            AS order_id,
+                o.created_at                    AS order_created,
+                o.status                        AS order_status,
+                p.id                            AS production_id,
                 p.product_group,
                 p.expected_delivery_date,
                 p.appointment_id,
-                fh.created_at               AS upload_timestamp,
-                d.id                        AS delivery_id,
-                d.created_at                AS delivery_at,
-                COUNT(r.id)                 AS revisions
-            FROM api.productions p
-            JOIN api.orders           o   ON o.id  = p.order_id
-            LEFT JOIN api.appointments    a   ON a.id  = p.appointment_id
-            LEFT JOIN api.flow_histories  fh  ON fh.processable_id = p.id
+                p.status                        AS production_status,
+                p.created_at                    AS appt_date,
+                0                               AS is_return,
+                NULL                            AS return_reason,
+                NULL                            AS appt_notes,
+                fh.created_at                   AS upload_timestamp,
+                d.id                            AS delivery_id,
+                d.created_at                    AS delivery_at,
+                d.is_revision                   AS delivery_is_revision,
+                COUNT(d2.id)                    AS total_deliveries,
+                COUNT(CASE WHEN d2.is_revision = 0 THEN 1 END) AS first_deliveries,
+                r.id                            AS revision_id,
+                r.notes                         AS revision_notes,
+                r.expected_delivery_at          AS revision_expected_at,
+                r.created_at                    AS revision_created_at,
+                r.status                        AS revision_status
+            FROM api.orders o
+            JOIN api.productions      p   ON p.order_id        = o.id
+            LEFT JOIN api.flow_histories fh ON fh.processable_id = p.id
             JOIN api.deliveries       d   ON d.production_id   = p.id
-            LEFT JOIN api.revisions   r   ON r.delivery_id     = d.id
+                                         AND d.is_revision     = 0
+            JOIN api.deliveries       d2  ON d2.production_id  = p.id
+            LEFT JOIN api.revisions   r   ON r.production_id   = p.id
             WHERE
-                (p.appointment_id = 0 OR p.appointment_id IS NULL)
+                (p.appointment_id IS NULL OR p.appointment_id = 0)
                 AND fh.processable_type LIKE '%production'
                 AND fh.action_id = 'complete'
                 AND fh.status    = 'waitingOnClient'
                 AND p.created_at >= :date_from
                 AND p.created_at <  :date_to
-                AND (p.status = 'delivered' OR p.status = 'manualUpload')
             GROUP BY
-                p.order_id, o.created_at, p.id, p.product_group,
-                p.expected_delivery_date, p.appointment_id,
-                fh.created_at, d.id, d.created_at
-            ORDER BY p.id ASC
+                o.id, o.created_at, o.status,
+                p.id, p.product_group, p.expected_delivery_date,
+                p.appointment_id, p.status, p.created_at,
+                fh.created_at, d.id, d.created_at, d.is_revision,
+                r.id, r.notes, r.expected_delivery_at,
+                r.created_at, r.status
+            ORDER BY p.created_at DESC, o.id, p.id
         ";
     }
-
 
     private function setDatabase(): void
     {

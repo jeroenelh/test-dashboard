@@ -2,241 +2,233 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Zibber · Production Monitor — MTD v6</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Zibber · Production Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
-        :root{--zd:#1F2E4A;--zb:#1F80F0;--zg:#2FC974;--zlight:#ECF2FD;--zgrey:#F6F6F6;--zborder:#E2E8F0;--zt:#1A202C;--zm:#64748B;--zr:#E24B4A;--za:#EF9F27;--zp:#8B5CF6;--r:9px;--rlg:12px}
+        :root{--zd:#1F2E4A;--zb:#1F80F0;--zg:#2FC974;--zl:#ECF2FD;--zgr:#F6F6F6;--zbd:#E2E8F0;--zt:#1A202C;--zm:#64748B;--zr:#E24B4A;--za:#EF9F27;--zp:#8B5CF6;--r:9px;--rl:12px}
         *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;background:var(--zgrey);color:var(--zt)}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;background:var(--zgr);color:var(--zt)}
         .page{max-width:1600px;margin:0 auto;padding:14px}
-        .hdr{background:var(--zd);border-radius:var(--rlg);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-        .hdr-left{display:flex;align-items:center;gap:12px}
-        .hdr-logo{color:#fff;font-size:16px;font-weight:600}.hdr-logo span{color:var(--zg)}
+
+        /* Header */
+        .hdr{background:var(--zd);border-radius:var(--rl);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+        .hdr-title{color:#fff;font-size:16px;font-weight:700}
         .hdr-sub{color:rgba(255,255,255,.4);font-size:11px;margin-top:2px}
-        .hdr-badge{background:rgba(47,201,116,.2);border:0.5px solid rgba(47,201,116,.4);color:var(--zg);font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;letter-spacing:.03em}
         .hdr-right{display:flex;align-items:center;gap:8px}
-        .hdr-time{color:rgba(255,255,255,.35);font-size:11px;margin-right:4px}
+        .hdr-time{color:rgba(255,255,255,.35);font-size:11px}
+        .rbtn{display:flex;align-items:center;gap:6px;background:rgba(47,201,116,.15);border:0.5px solid rgba(47,201,116,.35);color:var(--zg);padding:5px 12px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+        .rbtn:hover{background:rgba(47,201,116,.25)}
+        .rbtn.loading{opacity:.6;pointer-events:none}
         .ibtn{background:rgba(255,255,255,.08);border:0.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.75);padding:5px 12px;border-radius:var(--r);font-size:12px;cursor:pointer}
         .ibtn:hover{background:rgba(255,255,255,.15)}
 
         /* SLA Legend */
-        .sla-legend{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-        .sla-legend-title{font-size:10px;font-weight:700;color:var(--zm);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
-        .sla-items{display:flex;gap:6px;flex-wrap:wrap;flex:1}
-        .sla-item{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:20px;border:0.5px solid var(--zborder);white-space:nowrap}
-        .sla-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-        .sla-item-label{font-size:11px;font-weight:600;color:var(--zt)}
-        .sla-item-desc{font-size:10px;color:var(--zm);margin-left:2px}
-        .sla-item.ok{background:#F0FBF4;border-color:#A7E3BC}
-        .sla-item.lt{background:#FEF9EC;border-color:#F5D98A}
-        .sla-item.ret{background:#FEF0F0;border-color:#F5ABAB}
-        .sla-item.rev{background:#F5F0FF;border-color:#C4B0F5}
-        .sla-item.both{background:#FEF0F0;border-color:#E24B4A}
+        .legend-bar{background:#fff;border:0.5px solid var(--zbd);border-radius:var(--rl);padding:9px 16px;margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+        .leg-title{font-size:10px;font-weight:700;color:var(--zm);text-transform:uppercase;letter-spacing:.06em;margin-right:6px;white-space:nowrap}
+        .leg-item{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;border:0.5px solid var(--zbd);font-size:11px;white-space:nowrap}
+        .leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+        .leg-label{font-weight:600;color:var(--zt)}
+        .leg-desc{color:var(--zm);font-size:10px}
+        .leg-ok{background:#F0FBF4;border-color:#A7E3BC}
+        .leg-lt{background:#FEF9EC;border-color:#F5D98A}
+        .leg-ftr{background:#FEF0F0;border-color:#F5ABAB}
+        .leg-rev{background:#F5F0FF;border-color:#C4B0F5}
+        .leg-both{background:#FEF0F0;border-color:#E24B4A}
 
         /* Filter bar */
-        .fbar{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+        .fbar{background:#fff;border:0.5px solid var(--zbd);border-radius:var(--rl);padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
         .fg{display:flex;align-items:center;gap:6px}
         .fl{font-size:11px;color:var(--zm);font-weight:500;white-space:nowrap}
-        .lbtn{padding:4px 10px;font-size:11px;font-weight:500;border:0.5px solid var(--zborder);border-radius:var(--r);background:#fff;cursor:pointer;color:var(--zm)}
-        .lbtn.active{background:var(--zd);color:#fff;border-color:var(--zd)}
-        .lbtn:hover:not(.active){border-color:var(--zb);color:var(--zb)}
+        .fdiv{width:0.5px;height:22px;background:var(--zbd);flex-shrink:0}
+        .tbtn{padding:4px 11px;font-size:11px;font-weight:500;border:0.5px solid var(--zbd);border-radius:var(--r);background:#fff;cursor:pointer;color:var(--zm)}
+        .tbtn.active{background:var(--zd);color:#fff;border-color:var(--zd)}
+        .tbtn:hover:not(.active){border-color:var(--zb);color:var(--zb)}
         .chips{display:flex;gap:4px;flex-wrap:wrap}
-        .chip{padding:3px 9px;font-size:11px;border-radius:20px;border:0.5px solid var(--zborder);cursor:pointer;color:var(--zm);background:#fff;user-select:none}
-        .chip.active{background:var(--zlight);color:var(--zd);border-color:var(--zb);font-weight:500}
-        .fdiv{width:0.5px;height:22px;background:var(--zborder);flex-shrink:0}
+        .chip{padding:3px 9px;font-size:11px;border-radius:20px;border:0.5px solid var(--zbd);cursor:pointer;color:var(--zm);background:#fff;user-select:none}
+        .chip.active{background:var(--zl);color:var(--zd);border-color:var(--zb);font-weight:500}
+        .osearch{padding:5px 10px;border:0.5px solid var(--zbd);border-radius:var(--r);font-size:12px;width:170px;color:var(--zt);background:#fff}
+        .osearch:focus{outline:none;border-color:var(--zb)}
 
-        /* KPI */
-        .kgrid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:8px;margin-bottom:12px}
-        .kpi{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:10px 12px;position:relative;overflow:hidden}
+        /* KPI grid */
+        .kgrid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:8px;margin-bottom:10px}
+        .kpi{background:#fff;border:0.5px solid var(--zbd);border-radius:var(--rl);padding:10px 12px;position:relative;overflow:hidden}
         .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
-        .kpi.kblue::before{background:var(--zb)}.kpi.kgreen::before{background:var(--zg)}
-        .kpi.kred::before{background:var(--zr)}.kpi.kamber::before{background:var(--za)}
-        .kpi.kpurple::before{background:var(--zp)}
-        .klbl{font-size:10px;color:var(--zm);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;font-weight:500;line-height:1.3}
+        .kb::before{background:var(--zb)}.kg::before{background:var(--zg)}
+        .kr::before{background:var(--zr)}.ka::before{background:var(--za)}.kp::before{background:var(--zp)}
+        .klbl{font-size:10px;color:var(--zm);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;font-weight:500}
         .kval{font-size:20px;font-weight:700;color:var(--zt);line-height:1}
-        .kval.green{color:#1a6b35}.kval.red{color:var(--zr)}.kval.amber{color:#7a4200}.kval.purple{color:#6D28D9}
+        .kval.g{color:#1a6b35}.kval.r{color:var(--zr)}.kval.a{color:#7a4200}.kval.p{color:#6D28D9}
         .kdelta{font-size:10px;margin-top:3px;color:var(--zm)}
         .kdelta.up{color:var(--zg)}.kdelta.dn{color:var(--zr)}
 
         /* Tabs */
-        .tabs{display:flex;gap:2px;border-bottom:2px solid var(--zborder);margin-bottom:14px}
-        .tab{padding:7px 16px;font-size:12px;font-weight:500;cursor:pointer;color:var(--zm);border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:var(--r) var(--r) 0 0;white-space:nowrap}
-        .tab:hover{color:var(--zb);background:var(--zlight)}.tab.active{color:var(--zd);border-bottom-color:var(--zb);background:#fff}
+        .tabs{display:flex;gap:2px;border-bottom:2px solid var(--zbd);margin-bottom:14px}
+        .tab{padding:7px 16px;font-size:12px;font-weight:500;cursor:pointer;color:var(--zm);border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:var(--r) var(--r) 0 0;white-space:nowrap;transition:all .1s}
+        .tab:hover{color:var(--zb);background:var(--zl)}
+        .tab.active{color:var(--zd);border-bottom-color:var(--zb);background:#fff}
         .panel{display:none}.panel.active{display:block}
 
         /* Cards */
-        .card{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:16px;overflow:visible}
+        .card{background:#fff;border:0.5px solid var(--zbd);border-radius:var(--rl);padding:16px;margin-bottom:10px;overflow:visible}
         .ctitle{font-size:12px;font-weight:600;color:var(--zt);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
-        .legend{display:flex;gap:10px;flex-wrap:wrap}
-        .li{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--zm)}
-        .lsq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
-        .lline{width:18px;height:2px;flex-shrink:0}
-        .chart-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;margin-bottom:12px;overflow:visible}
-        .chart-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+        .cleg{display:flex;gap:10px;flex-wrap:wrap}
+        .cli{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--zm)}
+        .csq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+        .cln{width:18px;height:2px;flex-shrink:0}
+        .chart2{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px;margin-bottom:10px;overflow:visible}
 
         /* Section label */
-        .slabel{font-size:11px;font-weight:600;color:var(--zm);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px;display:flex;align-items:center;justify-content:space-between}
+        .slbl{font-size:11px;font-weight:600;color:var(--zm);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 6px;display:flex;justify-content:space-between;align-items:center}
 
         /* Tables */
-        .twrap{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);overflow:hidden;margin-bottom:12px}
-        .twrap.sx{overflow-x:auto}.twrap.sy{max-height:520px;overflow-y:auto;overflow-x:auto}
+        .tw{background:#fff;border:0.5px solid var(--zbd);border-radius:var(--rl);overflow:hidden;margin-bottom:10px}
+        .tw.sx{overflow-x:auto}.tw.sy{max-height:520px;overflow-y:auto;overflow-x:auto}
         table{width:100%;border-collapse:collapse}
         thead th{background:var(--zd);color:rgba(255,255,255,.85);font-size:11px;font-weight:500;padding:8px 10px;text-align:right;white-space:nowrap;position:sticky;top:0;z-index:2}
         thead th.tl{text-align:left}
         thead th.grp{background:#243454;font-size:10px;letter-spacing:.04em;text-transform:uppercase}
-        tbody td{padding:6px 10px;text-align:right;font-size:12px;border-bottom:0.5px solid var(--zborder);vertical-align:middle}
+        thead th[title]{cursor:help;border-bottom:1px dashed rgba(255,255,255,.3)}
+        tbody td{padding:6px 10px;text-align:right;font-size:12px;border-bottom:0.5px solid var(--zbd);vertical-align:middle}
         tbody td.tl{text-align:left}
         tbody tr:last-child td{border-bottom:none}
-        tbody tr:hover td{background:var(--zlight)}
-        tfoot td{background:var(--zgrey);font-weight:600;font-size:12px;border-top:1.5px solid var(--zborder);text-align:right}
+        tbody tr:hover td{background:var(--zl)}
+        tfoot td{background:var(--zgr);font-weight:600;font-size:12px;border-top:1.5px solid var(--zbd);text-align:right}
         tfoot td.tl{text-align:left}
-        .col-sep{background:#f0f3f8 !important;width:6px;padding:0 !important;border-left:1.5px solid var(--zborder) !important;border-right:1.5px solid var(--zborder) !important}
-        .today-row td{background:#FFFBEB}.today-row:hover td{background:var(--zlight)}
+        .csep{background:#f0f3f8!important;width:4px;padding:0!important;border-left:1.5px solid var(--zbd)!important;border-right:1.5px solid var(--zbd)!important}
+        .tday td{background:#FFFBEB}.tday:hover td{background:var(--zl)}
         .tbadge{font-size:9px;font-weight:700;background:var(--za);color:#fff;padding:1px 5px;border-radius:4px;margin-left:5px;vertical-align:middle}
 
         /* Badges */
         .b{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap}
         .bg{background:#EAF3DE;color:#3B6D11}.ba{background:#FAEEDA;color:#854F0B}
-        .br{background:#FCEBEB;color:#A32D2D}.bb{background:var(--zlight);color:#0C447C}
+        .br{background:#FCEBEB;color:#A32D2D}.bb{background:var(--zl);color:#0C447C}
         .bo{background:#FFF3E0;color:#7a4200}.bp{background:#F5F0FF;color:#6D28D9}
-        .cg{background:#EAF3DE}.co{background:#FAEEDA}.cr{background:#FCEBEB}.cp{background:#F5F0FF}
 
         /* SLA bar */
-        .sbar{display:flex;height:6px;border-radius:3px;overflow:hidden;width:80px;flex-shrink:0}
+        .sbar{display:flex;height:6px;border-radius:3px;overflow:hidden;width:80px}
         .sin{background:var(--zg)}.sout{background:var(--zr)}
-        .scell{display:flex;align-items:center;gap:6px;justify-content:flex-end}
 
         /* Links */
-        .olink{color:var(--zb);font-weight:600;text-decoration:none;font-size:12px}.olink:hover{text-decoration:underline}
+        .olink{color:var(--zb);font-weight:600;text-decoration:none;font-size:12px}
+        .olink:hover{text-decoration:underline}
         .elinks{display:flex;gap:4px}
-        .elink{font-size:10px;color:var(--zm);background:var(--zgrey);padding:2px 6px;border-radius:var(--r);text-decoration:none;border:0.5px solid var(--zborder)}
+        .elink{font-size:10px;color:var(--zm);background:var(--zgr);padding:2px 6px;border-radius:var(--r);text-decoration:none;border:0.5px solid var(--zbd)}
         .elink:hover{color:var(--zb);border-color:var(--zb)}
-        .plink{font-size:11px;color:var(--zb);text-decoration:none}.plink:hover{text-decoration:underline}
-        .rtag{font-size:10px;color:var(--zm);background:var(--zgrey);padding:2px 7px;border-radius:var(--r);display:inline-block;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .plink{font-size:11px;color:var(--zb);text-decoration:none}
+        .plink:hover{text-decoration:underline}
+        .rtag{font-size:10px;color:var(--zm);background:var(--zgr);padding:2px 7px;border-radius:var(--r);display:inline-block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help}
 
         /* Perf cards */
-        .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px}
-        .pcard{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:14px}
+        .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-bottom:12px}
+        .pcard{background:#fff;border:0.5px solid var(--zbd);border-radius:var(--rl);padding:12px}
         .pcard.ok{border-left:4px solid var(--zg)}.pcard.warn{border-left:4px solid var(--za)}.pcard.fail{border-left:4px solid var(--zr)}
-        .pcard-name{font-size:12px;font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
-        .pstats{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
-        .pst{background:var(--zgrey);border-radius:var(--r);padding:6px 8px}
-        .pst-lbl{font-size:10px;color:var(--zm);text-transform:uppercase;letter-spacing:.04em;font-weight:500;margin-bottom:2px}
-        .pst-val{font-size:14px;font-weight:700;color:var(--zt)}
-        .pst-val.ok{color:#1a6b35}.pst-val.fail{color:var(--zr)}.pst-val.amb{color:#7a4200}
-        .pbar-wrap{margin-top:6px}
-        .pbar-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--zm);margin-bottom:3px}
-        .pbar{height:7px;background:var(--zborder);border-radius:4px;overflow:visible;position:relative}
+        .pcard-name{font-size:12px;font-weight:600;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}
+        .pstats{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:7px}
+        .pst{background:var(--zgr);border-radius:var(--r);padding:5px 8px}
+        .pst-lbl{font-size:10px;color:var(--zm);text-transform:uppercase;letter-spacing:.04em;font-weight:500;margin-bottom:1px}
+        .pst-val{font-size:13px;font-weight:700;color:var(--zt)}
+        .pst-val.ok{color:#1a6b35}.pst-val.fail{color:var(--zr)}
+        .pbar-wrap{margin-top:5px}
+        .pbar-lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--zm);margin-bottom:2px}
+        .pbar{height:6px;background:var(--zbd);border-radius:4px;overflow:visible;position:relative}
         .pbar-fill{height:100%;border-radius:4px}
-        .pbar-target{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--zd);border-radius:1px;z-index:2}
-        .pbar-note{font-size:10px;margin-top:3px;text-align:right}
+        .pbar-tgt{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--zd);border-radius:1px;z-index:2}
+        .pbar-note{font-size:10px;margin-top:2px;text-align:right}
 
         /* Ttbar */
         .ttbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px}
-        .tsearch{padding:5px 10px;border:0.5px solid var(--zborder);border-radius:var(--r);font-size:12px;width:190px;color:var(--zt);background:#fff}
+        .tsearch{padding:5px 10px;border:0.5px solid var(--zbd);border-radius:var(--r);font-size:12px;width:190px;color:var(--zt);background:#fff}
         .tsearch:focus{outline:none;border-color:var(--zb)}
 
-        /* Tooltip */
-        .tip{position:relative;display:inline-block}
-        .tip:hover .tiptext{visibility:visible;opacity:1}
-        .tiptext{visibility:hidden;opacity:0;background:var(--zd);color:#fff;font-size:11px;border-radius:var(--r);padding:6px 10px;position:absolute;z-index:50;bottom:125%;left:50%;transform:translateX(-50%);white-space:nowrap;max-width:260px;white-space:normal;line-height:1.4;transition:opacity .15s;pointer-events:none}
+        /* Drilldown */
+        .drill{background:#FFFBEB;border:0.5px solid #F5D98A;border-radius:var(--rl);margin-bottom:10px;overflow:hidden;display:none}
+        .drill.open{display:block}
+        .drill-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#FEF9EC;border-bottom:0.5px solid #F5D98A;font-size:12px;font-weight:600;color:var(--zt)}
+        .drill-close{cursor:pointer;color:var(--zm);font-size:16px;line-height:1}
 
         /* Settings */
         .overlay{display:none;position:fixed;inset:0;background:rgba(15,25,50,.5);z-index:100;align-items:flex-start;justify-content:flex-end;padding:60px 14px 14px}
         .overlay.open{display:flex}
-        .sp{background:#fff;border-radius:var(--rlg);width:400px;max-height:calc(100vh - 80px);overflow-y:auto;border:0.5px solid var(--zborder)}
-        .sp-hdr{background:var(--zd);padding:13px 18px;border-radius:var(--rlg) var(--rlg) 0 0;display:flex;align-items:center;justify-content:space-between}
+        .sp{background:#fff;border-radius:var(--rl);width:380px;max-height:calc(100vh - 80px);overflow-y:auto}
+        .sp-hdr{background:var(--zd);padding:12px 18px;border-radius:var(--rl) var(--rl) 0 0;display:flex;align-items:center;justify-content:space-between}
         .sp-hdr span{color:#fff;font-size:14px;font-weight:600}
-        .sp-hdr button{background:transparent;border:none;color:rgba(255,255,255,.6);font-size:22px;cursor:pointer;line-height:1}
+        .sp-hdr button{background:transparent;border:none;color:rgba(255,255,255,.6);font-size:22px;cursor:pointer}
         .sp-hdr button:hover{color:#fff}
-        .sp-body{padding:16px 18px}
-        .sp-section{font-size:11px;font-weight:600;color:var(--zm);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
-        .sp-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--zborder)}
+        .sp-body{padding:14px 18px}
+        .sp-sect{font-size:11px;font-weight:600;color:var(--zm);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 6px}
+        .sp-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--zbd)}
         .sp-row:last-child{border-bottom:none}
         .sp-name{font-size:12px;color:var(--zt);font-weight:500}
-        .sp-inp{width:65px;padding:4px 8px;border:0.5px solid var(--zborder);border-radius:var(--r);font-size:12px;text-align:right}
+        .sp-inp{width:65px;padding:4px 8px;border:0.5px solid var(--zbd);border-radius:var(--r);font-size:12px;text-align:right}
         .sp-inp:focus{outline:none;border-color:var(--zb)}
-        .sp-save{width:100%;margin-top:14px;padding:9px;background:var(--zb);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer}
-        /* Column header tooltips */
-        thead th[title]{cursor:help;border-bottom:1px dashed rgba(255,255,255,.4)}
-        thead th[title]:hover{background:#2a3f63}
-        .footer{text-align:center;font-size:11px;color:var(--zm);margin-top:20px;padding-top:10px;border-top:0.5px solid var(--zborder)}
-        @media(max-width:1200px){.kgrid{grid-template-columns:repeat(5,1fr)}.chart-grid{grid-template-columns:1fr}.chart-grid-3{grid-template-columns:1fr}}
+        .sp-save{width:100%;margin-top:12px;padding:9px;background:var(--zb);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer}
+
+        /* Loading */
+        .loading-overlay{display:none;position:fixed;inset:0;background:rgba(31,46,74,.7);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+        .loading-overlay.show{display:flex}
+        .spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--zg);border-radius:50%;animation:spin .8s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .loading-text{color:#fff;font-size:14px;font-weight:500}
+
+        .footer{text-align:center;font-size:11px;color:var(--zm);margin-top:16px;padding-top:10px;border-top:0.5px solid var(--zbd)}
+        @media(max-width:1200px){.kgrid{grid-template-columns:repeat(5,1fr)}.chart2{grid-template-columns:1fr}}
         @media(max-width:640px){.kgrid{grid-template-columns:repeat(2,1fr)}}
     </style>
 </head>
 <body>
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading...</div>
+</div>
+
 <div class="page">
 
     <!-- Header -->
     <div class="hdr">
-        <div class="hdr-left">
-            <div>
-                <div class="hdr-logo">Zibber <span>·</span> Production Monitor <span class="hdr-badge" id="mtdBadge">MTD</span></div>
-                <div class="hdr-sub">Month to date · SLA = Lead time AND FTR · Returns = Zibber fault · Revisions = client request</div>
-            </div>
+        <div>
+            <div class="hdr-title">Zibber · Production Monitor</div>
+            <div class="hdr-sub">Last 30 days · Based on appointment date · SLA = Lead time AND FTR</div>
         </div>
         <div class="hdr-right">
-            <span class="hdr-time" id="lastUpdated"></span>
+            <span class="hdr-time" id="lastUpdated">—</span>
+            <button class="rbtn" id="refreshBtn" onclick="loadData()">↻ Refresh</button>
             <button class="ibtn" onclick="openSettings()">⚙ Settings</button>
         </div>
     </div>
 
     <!-- SLA Legend -->
-    <div class="sla-legend">
-        <div class="sla-legend-title">SLA</div>
-        <div class="sla-items">
-            <div class="sla-item ok">
-                <span class="sla-dot" style="background:var(--zg)"></span>
-                <div>
-                    <div class="sla-item-label">On target</div>
-                    <div class="sla-item-desc">Upload ≤ deadline AND 1 delivery</div>
-                </div>
-            </div>
-            <div class="sla-item lt">
-                <span class="sla-dot" style="background:var(--za)"></span>
-                <div>
-                    <div class="sla-item-label">Lead time breach</div>
-                    <div class="sla-item-desc">Upload after expected delivery date</div>
-                </div>
-            </div>
-            <div class="sla-item ret">
-                <span class="sla-dot" style="background:var(--zr)"></span>
-                <div>
-                    <div class="sla-item-label">FTR breach</div>
-                    <div class="sla-item-desc">More than 1 delivery (re-delivery)</div>
-                </div>
-            </div>
-            <div class="sla-item rev">
-                <span class="sla-dot" style="background:var(--zp)"></span>
-                <div>
-                    <div class="sla-item-label">Revision (client)</div>
-                    <div class="sla-item-desc">Client requested change · tracked separately</div>
-                </div>
-            </div>
-            <div class="sla-item both">
-                <span class="sla-dot" style="background:var(--zr)"></span>
-                <div>
-                    <div class="sla-item-label">Both breached</div>
-                    <div class="sla-item-desc">Late upload AND multiple deliveries</div>
-                </div>
-            </div>
-        </div>
+    <div class="legend-bar">
+        <span class="leg-title">SLA</span>
+        <div class="leg-item leg-ok"><span class="leg-dot" style="background:var(--zg)"></span><span class="leg-label">On target</span><span class="leg-desc">Upload ≤ deadline and 1st delivery correct</span></div>
+        <div class="leg-item leg-lt"><span class="leg-dot" style="background:var(--za)"></span><span class="leg-label">Lead time breach</span><span class="leg-desc">Upload after expected_delivery_date</span></div>
+        <div class="leg-item leg-ftr"><span class="leg-dot" style="background:var(--zr)"></span><span class="leg-label">FTR breach</span><span class="leg-desc">More than 1 delivery (re-delivery)</span></div>
+        <div class="leg-item leg-rev"><span class="leg-dot" style="background:var(--zp)"></span><span class="leg-label">Revisie (klant)</span><span class="leg-desc">Klant vroeg aanpassing na delivery</span></div>
+        <div class="leg-item leg-both"><span class="leg-dot" style="background:var(--zr)"></span><span class="leg-label">LT + FTR</span><span class="leg-desc">Both breached</span></div>
     </div>
 
     <!-- Filter bar -->
     <div class="fbar">
         <div class="fg">
             <span class="fl">Order</span>
-            <input class="tsearch" id="globalOrderSearch" type="text" placeholder="Search order ID..." style="width:160px" oninput="globalSearch(this.value)">
+            <input class="osearch" id="orderSearch" type="text" placeholder="Search order ID..." oninput="onOrderSearch(this.value)">
+        </div>
+        <div class="fdiv"></div>
+        <div class="fg">
+            <span class="fl">Country</span>
+            <div style="display:flex;gap:4px" id="landBtns">
+                <button class="tbtn active" onclick="setLand(this,'ALL')">ALL</button>
+                <button class="tbtn" onclick="setLand(this,'NL')">NL</button>
+                <button class="tbtn" onclick="setLand(this,'BE')">BE</button>
+                <button class="tbtn" onclick="setLand(this,'DE')">DE</button>
+            </div>
         </div>
         <div class="fdiv"></div>
         <div class="fg">
             <span class="fl">Chart</span>
             <div style="display:flex;gap:4px">
-                <button class="lbtn active" id="periodDay" onclick="setPeriod('day')">Day</button>
-                <button class="lbtn" id="periodWeek" onclick="setPeriod('week')">Week</button>
+                <button class="tbtn active" id="periodDay" onclick="setPeriod('day')">Dag</button>
+                <button class="tbtn" id="periodWeek" onclick="setPeriod('week')">Week</button>
             </div>
         </div>
         <div class="fdiv"></div>
@@ -246,18 +238,20 @@
         </div>
     </div>
 
-    <!-- KPI row — 10 cards -->
-    <div class="kgrid">
-        <div class="kpi kblue"><div class="klbl">Orders MTD</div><div class="kval" id="k-ord-tot">—</div><div class="kdelta" id="kd-ord-tot"></div></div>
-        <div class="kpi kgreen"><div class="klbl">Delivered</div><div class="kval green" id="k-ord-del">—</div><div class="kdelta up" id="kd-ord-del"></div></div>
-        <div class="kpi kamber"><div class="klbl">In progress</div><div class="kval amber" id="k-ord-prog">—</div><div class="kdelta" id="kd-ord-prog"></div></div>
-        <div class="kpi kgreen"><div class="klbl">On target</div><div class="kval green" id="k-ord-on">—</div><div class="kdelta" id="kd-ord-on"></div></div>
-        <div class="kpi kred"><div class="klbl">SLA breach</div><div class="kval red" id="k-breach">—</div><div class="kdelta dn" id="kd-breach"></div></div>
-        <div class="kpi kblue"><div class="klbl">Productions MTD</div><div class="kval" id="k-prod-tot">—</div><div class="kdelta" id="kd-prod-tot"></div></div>
-        <div class="kpi kgreen"><div class="klbl">Prod. delivered</div><div class="kval green" id="k-prod-del">—</div><div class="kdelta up" id="kd-prod-del"></div></div>
-        <div class="kpi kred"><div class="klbl">Returns (Zibber)</div><div class="kval red" id="k-returns">—</div><div class="kdelta dn" id="kd-returns"></div></div>
-        <div class="kpi kpurple"><div class="klbl">Revisions (client)</div><div class="kval purple" id="k-revisions">—</div><div class="kdelta" id="kd-revisions"></div></div>
-        <div class="kpi kamber"><div class="klbl">Lead time breach</div><div class="kval amber" id="k-lt">—</div><div class="kdelta dn" id="kd-lt"></div></div>
+    <!-- KPI's — rij 1: orders flow, rij 2: kwaliteit/breach -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:4px">
+        <div class="kpi kb"><div class="klbl">Orders (30d)</div><div class="kval" id="k-ord">—</div><div class="kdelta" id="kd-ord">created</div></div>
+        <div class="kpi ka"><div class="klbl">In progress</div><div class="kval a" id="k-prog">—</div><div class="kdelta" id="kd-prog">awaiting delivery</div></div>
+        <div class="kpi kg"><div class="klbl">Productions delivered</div><div class="kval g" id="k-del">—</div><div class="kdelta up" id="kd-del"></div></div>
+        <div class="kpi kg"><div class="klbl">On target</div><div class="kval g" id="k-on">—</div><div class="kdelta" id="kd-on"></div></div>
+        <div class="kpi kb"><div class="klbl">Appointments (30d)</div><div class="kval" id="k-appt">—</div><div class="kdelta" id="kd-appt">shoots scheduled</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px">
+        <div class="kpi kr"><div class="klbl">SLA breach</div><div class="kval r" id="k-breach">—</div><div class="kdelta dn" id="kd-breach">not on target</div></div>
+        <div class="kpi ka"><div class="klbl">Lead time breach</div><div class="kval a" id="k-lt">—</div><div class="kdelta dn" id="kd-lt">upload after deadline</div></div>
+        <div class="kpi kr"><div class="klbl">FTR breach</div><div class="kval r" id="k-ftr">—</div><div class="kdelta dn" id="kd-ftr">re-delivery required</div></div>
+        <div class="kpi kr"><div class="klbl">Returns (Zibber)</div><div class="kval r" id="k-ret">—</div><div class="kdelta dn" id="kd-ret">photographer error</div></div>
+        <div class="kpi kp"><div class="klbl">Revisions (client)</div><div class="kval p" id="k-rev">—</div><div class="kdelta" id="kd-rev">change request</div></div>
     </div>
 
     <!-- Tabs -->
@@ -265,119 +259,101 @@
         <div class="tab active" onclick="switchTab('overview')">Overview</div>
         <div class="tab" onclick="switchTab('products')">Products</div>
         <div class="tab" onclick="switchTab('orders')">Order detail</div>
-        <div class="tab" onclick="switchTab('breach')">SLA breach <span class="b br" style="margin-left:4px" id="breachCount">—</span></div>
-        <div class="tab" onclick="switchTab('returns')">Returns &amp; Revisions <span class="b br" style="margin-left:4px" id="returnCount">—</span></div>
+        <div class="tab" onclick="switchTab('breach')">SLA breach <span class="b br" id="breachBadge" style="margin-left:4px">—</span></div>
+        <div class="tab" onclick="switchTab('returns')">Returns & Revisions <span class="b bp" id="retBadge" style="margin-left:4px">—</span></div>
         <div class="tab" onclick="switchTab('perf')">Performance</div>
     </div>
 
-    <!-- TAB 1: OVERVIEW -->
+    <!-- OVERVIEW -->
     <div class="panel active" id="panel-overview">
-        <div class="chart-grid">
+        <div class="chart2">
             <div class="card">
                 <div class="ctitle">
-                    <span id="chartPeriodLabel">Daily on-target % — <span id="monthLabelChart"></span></span>
-                    <div class="legend">
-                        <span class="li"><span class="lsq" style="background:rgba(31,128,240,.2);border:1px solid rgba(31,128,240,.35)"></span>Order volume</span>
-                        <span class="li"><span class="lline" style="background:var(--zb)"></span>Orders on target %</span>
-                        <span class="li"><span class="lline" style="background:var(--zg)"></span>Productions on target %</span>
-                        <span class="li"><span class="lsq" style="background:var(--zd);width:16px;height:2px;border-radius:0"></span><span id="tgtLegend">95%</span> target</span>
+                    <span id="chartTitle">Daily production — last 30 days</span>
+                    <div class="cleg">
+                        <span class="cli"><span class="csq" style="background:rgba(31,128,240,.2);border:1px solid rgba(31,128,240,.4)"></span>Volume</span>
+                        <span class="cli"><span class="csq" style="background:var(--zr);opacity:.7"></span>SLA breach</span>
+                        <span class="cli"><span class="cln" style="background:var(--zg)"></span>On target %</span>
+                        <span class="cli"><span class="cln" style="background:var(--zb)"></span>LT ok %</span>
+                        <span class="cli"><span class="cln" style="background:var(--zd);border-top:2px dashed var(--zd)"></span><span id="tgtLbl">95%</span></span>
                     </div>
                 </div>
-                <div style="position:relative;height:210px">
-                    <canvas id="mainChart"></canvas>
-                </div>
+                <div style="position:relative;height:220px"><canvas id="mainChart"></canvas></div>
             </div>
             <div class="card">
-                <div class="ctitle">Breach breakdown — MTD</div>
-                <div style="position:relative;height:210px">
-                    <canvas id="breachDonut"></canvas>
-                </div>
+                <div class="ctitle">Breach breakdown</div>
+                <div style="position:relative;height:220px"><canvas id="donutChart"></canvas></div>
             </div>
         </div>
 
-        <div class="slabel" onclick="toggleWowDrill()" id="wowDrillToggle">Week over week — <span id="monthLabelWow"></span> <span style="font-size:11px;font-weight:400;color:var(--zb)" id="wowDrillHint">click week to see daily detail ↓</span></div>
-        <div class="twrap sx">
-            <table>
-                <thead><tr>
-                    <th class="tl" style="min-width:140px">Week</th>
-                    <th style="min-width:70px">Orders</th>
-                    <th style="min-width:80px">Delivered</th>
-                    <th style="min-width:80px">On target %</th>
-                    <th style="min-width:65px">Breach</th>
-                    <th style="min-width:65px">Returns</th>
-                    <th style="min-width:65px">Revisions</th>
-                    <th class="col-sep"></th>
-                    <th style="min-width:85px">Productions</th>
-                    <th style="min-width:90px">On target %</th>
-                    <th style="min-width:70px">LT breach</th>
-                    <th style="min-width:70px">FTR breach</th>
+        <!-- Week drilldown -->
+        <div class="drill" id="drillPanel">
+            <div class="drill-hdr">
+                <span id="drillTitle">Daily detail</span>
+                <span class="drill-close" onclick="closeDrill()">×</span>
+            </div>
+            <div class="tw sx">
+                <table><thead><tr>
+                    <th class="tl">Date</th>
+                    <th title="Number of orders on this day">Orders</th>
+                    <th title="Orders fully delivered">Delivered</th>
+                    <th title="Orders still in progress">In progress</th>
+                    <th title="Orders fully on target">On target</th>
+                    <th title="On target %">On target %</th>
+                    <th title="Orders with SLA breach">SLA breach</th>
+                    <th title="Lead time breach">LT breach</th>
+                    <th title="FTR breach (re-delivery)">FTR breach</th>
+                    <th title="Return appointments (Zibber)">Returns</th>
+                    <th title="Revisions (client)">Revisions</th>
                 </tr></thead>
-                <tbody id="wowBody"></tbody>
-                <tfoot id="wowFoot"></tfoot>
-            </table>
-        </div>
-
-        <div id="wowDrillSection" style="display:none">
-            <div class="slabel">Daily detail — <span id="wowDrillLabel"></span></div>
-            <div class="twrap sx">
-                <table>
-                    <thead><tr>
-                        <th class="tl" style="min-width:105px">Date</th>
-                        <th>Orders</th><th>On target %</th><th>Breach</th>
-                        <th>Productions</th><th>On target %</th><th>LT breach</th><th>FTR breach</th>
-                    </tr></thead>
-                    <tbody id="wowDrillBody"></tbody>
-                </table>
+                    <tbody id="drillBody"></tbody></table>
             </div>
         </div>
 
-        <div class="slabel">Daily breakdown — <span id="monthLabel"></span></div>
-        <div class="twrap sx">
-            <table>
-                <thead><tr>
-                    <th class="tl" style="min-width:105px">Date</th>
-                    <th style="min-width:70px">Orders</th>
-                    <th style="min-width:80px">Delivered</th>
-                    <th style="min-width:80px">In progress</th>
-                    <th style="min-width:85px">On target %</th>
-                    <th style="min-width:60px">Breach</th>
-                    <th style="min-width:65px">Returns</th>
-                    <th style="min-width:65px">Revisions</th>
-                    <th style="min-width:80px">Prods total</th>
-                    <th style="min-width:90px">Prod on target %</th>
-                    <th style="min-width:70px">LT breach</th>
-                    <th style="min-width:70px">FTR breach</th>
-                </tr></thead>
-                <tbody id="dailyBody"></tbody>
-                <tfoot id="dailyFoot"></tfoot>
-            </table>
+        <div class="slbl">Overzicht per <span id="periodLabel">day</span> <span style="font-size:10px;font-weight:400;color:var(--zb)" id="clickHint">· click row for daily detail</span></div>
+        <div class="tw sx">
+            <table><thead><tr>
+                <th class="tl" style="min-width:140px">Period</th>
+                <th title="Number of orders created in this period">Orders</th>
+                <th title="Orders with all productions delivered">Delivered</th>
+                <th title="Orders still waiting for one or more productions">In progress</th>
+                <th title="Delivered orders where all productions are on target">On target</th>
+                <th title="On target % of delivered orders">On target %</th>
+                <th class="csep"></th>
+                <th title="Orders with an SLA breach (LT or FTR)">SLA breach</th>
+                <th title="Lead time breach: upload after expected_delivery_date">LT breach</th>
+                <th title="FTR breach: more than 1 delivery on a production">FTR breach</th>
+                <th title="Return appointments (Zibber fault)">Returns</th>
+                <th title="Revisions requested by client">Revisions</th>
+            </tr></thead>
+                <tbody id="overviewBody"></tbody>
+                <tfoot id="overviewFoot"></tfoot></table>
         </div>
     </div>
 
-    <!-- TAB 2: PRODUCTS -->
+    <!-- PRODUCTS -->
     <div class="panel" id="panel-products">
-        <div class="twrap sx"><table>
+        <div class="tw sx"><table>
             <thead>
             <tr>
                 <th class="tl" rowspan="2" style="min-width:155px;vertical-align:middle">Product group</th>
-                <th rowspan="2" style="vertical-align:middle">SLA</th>
-                <th colspan="5" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Orders</th>
-                <th class="col-sep" rowspan="2"></th>
-                <th colspan="6" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Productions</th>
+                <th rowspan="2" style="vertical-align:middle" title="SLA norm in hours for this product">SLA</th>
+                <th colspan="6" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Orders &amp; Productions</th>
+                <th class="csep" rowspan="2"></th>
+                <th colspan="4" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Breach detail</th>
                 <th rowspan="2" style="min-width:90px;vertical-align:middle">SLA bar</th>
             </tr>
             <tr>
-                <th style="min-width:65px;border-left:2px solid #3a4d6b">Total</th>
-                <th style="min-width:75px">Delivered</th>
-                <th style="min-width:75px">In progress</th>
-                <th style="min-width:85px">On target %</th>
-                <th style="min-width:65px">Breach</th>
-                <th style="min-width:70px;border-left:2px solid #3a4d6b">Total</th>
-                <th style="min-width:80px">On target %</th>
-                <th style="min-width:70px">LT breach</th>
-                <th style="min-width:65px">Returns</th>
-                <th style="min-width:65px">Revisions</th>
-                <th style="min-width:70px">Both</th>
+                <th style="border-left:2px solid #3a4d6b" title="Number of orders in period">Orders</th>
+                <th title="Orders fully delivered">Delivered</th>
+                <th title="Orders still in progress">In progress</th>
+                <th title="Orders where all productions are on target">On target</th>
+                <th title="On target %">On target %</th>
+                <th title="Orders with SLA breach">Breach</th>
+                <th style="border-left:2px solid #3a4d6b" title="Lead time breach: upload after deadline">LT</th>
+                <th title="FTR breach: re-delivery required">FTR</th>
+                <th title="Returns due to Zibber/photographer error">Returns</th>
+                <th title="Revisions requested by client">Revisions</th>
             </tr>
             </thead>
             <tbody id="productBody"></tbody>
@@ -385,161 +361,148 @@
         </table></div>
     </div>
 
-    <!-- TAB 3: ORDER DETAIL -->
+    <!-- ORDER DETAIL -->
     <div class="panel" id="panel-orders">
         <div class="ttbar">
     <span style="font-size:11px;color:var(--zm)">
       <span class="b bg">green = on target</span>
-      <span class="b br" style="margin-left:4px">red = breach / return</span>
+      <span class="b br" style="margin-left:4px">red = breach</span>
       <span class="b bp" style="margin-left:4px">purple = revision</span>
       · order on target = ALL productions on target
     </span>
             <input class="tsearch" type="text" placeholder="Search order ID..." oninput="renderOrders(this.value)">
         </div>
-        <div class="twrap sy"><table>
+        <div class="tw sy"><table>
             <thead><tr>
                 <th class="tl" style="min-width:90px">Order ID</th>
                 <th class="tl" style="min-width:55px">Country</th>
-                <th class="tl" style="min-width:70px">Status</th>
-                <th class="tl" style="min-width:75px">Links</th>
+                <th class="tl" style="min-width:90px" title="Date order created">Order datum</th>
+                <th class="tl" style="min-width:90px" title="Appointment date (photo shoot)">Appt date</th>
+                <th class="tl" style="min-width:80px">Status</th>
                 <th style="min-width:115px">Photography</th>
                 <th style="min-width:115px">Floorplanner</th>
                 <th style="min-width:100px">Measurement</th>
                 <th style="min-width:100px">CAD Report</th>
                 <th style="min-width:100px">Video</th>
-                <th style="min-width:110px">Soc. video</th>
-                <th style="min-width:100px">Soc. reel</th>
+                <th style="min-width:105px">Soc. video</th>
+                <th style="min-width:105px">Soc. reel</th>
                 <th style="min-width:95px">360 tour</th>
-                <th style="min-width:110px">Drone photo</th>
+                <th style="min-width:105px">Drone photo</th>
                 <th style="min-width:95px">Matterport</th>
                 <th style="min-width:95px">KuulaTour</th>
                 <th style="min-width:95px">Drone video</th>
-                <th style="min-width:110px">Artist impr.</th>
-                <th style="min-width:110px">Evening impr.</th>
+                <th style="min-width:105px">Artist impr.</th>
+                <th style="min-width:105px">Evening impr.</th>
                 <th style="min-width:80px">WOFL</th>
+                <th class="tl" style="min-width:75px">Links</th>
             </tr></thead>
             <tbody id="orderBody"></tbody>
         </table></div>
     </div>
 
-    <!-- TAB 4: BREACH -->
+    <!-- SLA BREACH -->
     <div class="panel" id="panel-breach">
         <div class="ttbar">
-            <span style="font-size:11px;color:var(--zm)">Lead time &gt; SLA norm <strong>or</strong> return appointment · <span class="b bp">purple = revision (client, not SLA breach)</span></span>
+            <span style="font-size:11px;color:var(--zm)">Upload after deadline (LT) or more than 1 delivery (FTR)</span>
             <input class="tsearch" type="text" placeholder="Search order / product..." oninput="renderBreach(this.value)">
         </div>
-        <div class="twrap sx"><table>
+        <div class="tw sx"><table>
             <thead><tr>
                 <th class="tl" style="min-width:90px">Order ID</th>
                 <th style="min-width:55px">Country</th>
-                <th style="min-width:140px">Product group</th>
-                <th style="min-width:105px" title="Date the order was placed">Order created ⓘ</th>
-                <th style="min-width:110px" title="Timestamp when photographer first uploaded the production">First upload ⓘ</th>
-                <th style="min-width:110px" title="Expected delivery date — upload must be before this for LT to be OK">SLA deadline ⓘ</th>
-                <th style="min-width:80px" title="Hours from order created to first upload (for context only — LT breach is based on upload vs deadline)">Turnaround ⓘ</th>
-                <th style="min-width:65px" title="SLA norm in hours for this product group">SLA norm ⓘ</th>
-                <th style="min-width:70px" title="Number of deliveries — more than 1 = FTR breach">Deliveries ⓘ</th>
+                <th style="min-width:140px">Product</th>
+                <th style="min-width:100px" title="Appointment date (photo shoot)">Appt date ⓘ</th>
+                <th style="min-width:110px" title="First upload by photographer">First upload ⓘ</th>
+                <th style="min-width:110px" title="Expected delivery date based on SLA norm">SLA deadline ⓘ</th>
+                <th style="min-width:80px" title="Hours between appointment and first upload">Turnaround ⓘ</th>
+                <th style="min-width:65px" title="SLA norm in hours for this product">Norm ⓘ</th>
+                <th style="min-width:70px" title="Total number of deliveries (>1 = FTR breach)">Deliveries ⓘ</th>
                 <th style="min-width:110px">Breach type</th>
-                <th style="min-width:130px" title="Return reason from appointment (only available after return_appointment is added to queries)">Return reason ⓘ</th>
+                <th style="min-width:140px" title="Reason for return appointment (Zibber)">Return reason ⓘ</th>
                 <th class="tl" style="min-width:60px">Links</th>
             </tr></thead>
             <tbody id="breachBody"></tbody>
         </table></div>
     </div>
 
-    <!-- TAB 5: RETURNS & REVISIONS -->
+    <!-- RETURNS & REVISIES -->
     <div class="panel" id="panel-returns">
-        <div class="chart-grid-3">
+        <div class="chart2" style="grid-template-columns:1fr 1fr 1fr">
             <div class="card">
-                <div class="ctitle">Return reasons (Zibber fault)</div>
-                <div style="position:relative;height:200px">
-                    <canvas id="returnPie"></canvas>
-                </div>
+                <div class="ctitle">Return reasonen (Zibber fault)</div>
+                <div style="position:relative;height:190px"><canvas id="returnPie"></canvas></div>
             </div>
             <div class="card">
-                <div class="ctitle">Revision types (client request)</div>
-                <div style="position:relative;height:200px">
-                    <canvas id="revisionPie"></canvas>
-                </div>
+                <div class="ctitle">Revisions per product (client)</div>
+                <div style="position:relative;height:190px"><canvas id="revPie"></canvas></div>
             </div>
             <div class="card">
-                <div class="ctitle">Returns vs Revisions — by product</div>
-                <div style="position:relative;height:200px">
-                    <canvas id="retRevByProd"></canvas>
-                </div>
+                <div class="ctitle">Returns vs Revisions per product</div>
+                <div style="position:relative;height:190px"><canvas id="retRevBar"></canvas></div>
             </div>
         </div>
 
-        <div class="slabel">Return appointments — Zibber fault</div>
-        <div class="twrap sx"><table>
+        <div class="slbl">Return appointments — Zibber fault</div>
+        <div class="tw sx"><table>
             <thead><tr>
-                <th class="tl" style="min-width:90px">Order ID</th>
-                <th style="min-width:55px">Country</th>
-                <th style="min-width:140px">Product group</th>
-                <th style="min-width:110px" title="Date the return appointment was scheduled">Appt. date ⓘ</th>
-                <th style="min-width:150px" title="Picklist value from return_appointment_notes — reason for the return visit">Return reason ⓘ</th>
-                <th style="min-width:200px" title="Free text notes from the appointment">Appt. notes ⓘ</th>
-                <th style="min-width:75px" title="Hours from order created to first upload">Lead time ⓘ</th>
-                <th style="min-width:100px">SLA status</th>
-                <th class="tl" style="min-width:60px">Links</th>
+                <th class="tl">Order ID</th><th>Country</th><th>Product</th>
+                <th title="Date return appointment scheduled">Return appt ⓘ</th>
+                <th title="Reason for the return (picklist)">Return reason ⓘ</th>
+                <th title="Free text note on the appointment">Appointment notes ⓘ</th>
+                <th title="First upload na return appointment">Upload ⓘ</th>
+                <th>SLA status</th>
+                <th class="tl">Links</th>
             </tr></thead>
             <tbody id="returnsBody"></tbody>
         </table></div>
 
-        <div class="slabel" style="margin-top:4px">Revisions — client request</div>
-        <div class="twrap sx"><table>
+        <div class="slbl" style="margin-top:4px">Revisions — client request</div>
+        <div class="tw sx"><table>
             <thead><tr>
-                <th class="tl" style="min-width:90px">Order ID</th>
-                <th style="min-width:55px">Country</th>
-                <th style="min-width:140px">Product group</th>
-                <th style="min-width:105px" title="Date the order was created in the system">Order created ⓘ</th>
-                <th style="min-width:105px" title="Date of first upload by photographer / production partner">First upload ⓘ</th>
-                <th style="min-width:105px" title="Expected delivery date based on SLA norm">SLA deadline ⓘ</th>
-                <th style="min-width:75px" title="Total days from order created to first upload">Turnaround ⓘ</th>
-                <th style="min-width:65px" title="Number of times this production was delivered">Deliveries ⓘ</th>
-                <th style="min-width:100px">LT status</th>
-                <th class="tl" style="min-width:60px">Links</th>
+                <th class="tl">Order ID</th><th>Country</th><th>Product</th>
+                <th title="Date revision requested">Revisie datum ⓘ</th>
+                <th title="Client instruction (revisions.notes)">Client instruction ⓘ</th>
+                <th title="Expected delivery after revision">Expected ⓘ</th>
+                <th>Status</th>
+                <th class="tl">Links</th>
             </tr></thead>
             <tbody id="revisionsBody"></tbody>
         </table></div>
     </div>
 
-    <!-- TAB 6: PERFORMANCE -->
+    <!-- PERFORMANCE -->
     <div class="panel" id="panel-perf">
         <div class="ttbar">
-            <span style="font-size:11px;color:var(--zm)">All product groups vs <strong id="targetLabel">95%</strong> on-target baseline · MTD</span>
+            <span style="font-size:11px;color:var(--zm)">All product groups vs <strong id="targetLbl">95%</strong> baseline · 30 days</span>
             <div style="display:flex;gap:6px">
-                <span class="b bg">≥ target</span>
-                <span class="b ba">within 10%</span>
-                <span class="b br">&gt;10% below</span>
+                <span class="b bg">≥ target</span><span class="b ba">within 10%</span><span class="b br">&gt;10% onder</span>
             </div>
         </div>
-        <div class="card" style="margin-bottom:12px">
+        <div class="card">
             <div class="ctitle">
-                <span>On-target % per product — orders vs productions</span>
-                <div class="legend">
-                    <span class="li"><span class="lsq" style="background:#1F80F0"></span>Orders on target %</span>
-                    <span class="li"><span class="lsq" style="background:#2FC974"></span>Productions on target %</span>
+                On target % per product
+                <div class="cleg">
+                    <span class="cli"><span class="csq" style="background:rgba(31,128,240,.8)"></span>LT on target %</span>
+                    <span class="cli"><span class="csq" style="background:rgba(47,201,116,.7)"></span>FTR on target %</span>
                 </div>
             </div>
             <div style="position:relative;height:200px"><canvas id="perfChart"></canvas></div>
         </div>
         <div class="pgrid" id="perfGrid"></div>
-        <div class="slabel">Performance summary</div>
-        <div class="twrap sx"><table>
+        <div class="tw sx"><table>
             <thead>
             <tr>
                 <th class="tl" rowspan="2" style="min-width:155px;vertical-align:middle">Product group</th>
                 <th rowspan="2" style="vertical-align:middle">Target</th>
-                <th colspan="3" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Orders</th>
-                <th class="col-sep" rowspan="2"></th>
-                <th colspan="5" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Productions</th>
+                <th colspan="4" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Productions</th>
+                <th class="csep" rowspan="2"></th>
+                <th colspan="4" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Breach detail</th>
             </tr>
             <tr>
-                <th style="border-left:2px solid #3a4d6b">Total</th>
-                <th>On target</th><th>On target %</th>
-                <th style="border-left:2px solid #3a4d6b">Total</th>
-                <th>On target %</th><th>Returns</th><th>Revisions</th><th>vs target</th>
+                <th style="border-left:2px solid #3a4d6b">Appts</th>
+                <th>On target</th><th>On target %</th><th>vs target</th>
+                <th style="border-left:2px solid #3a4d6b">LT breach</th>
+                <th>FTR breach</th><th>Returns</th><th>Revisions</th>
             </tr>
             </thead>
             <tbody id="perfBody"></tbody>
@@ -551,22 +514,22 @@
         <div class="sp">
             <div class="sp-hdr"><span>⚙ Settings</span><button onclick="closeSettings()">×</button></div>
             <div class="sp-body">
-                <div class="sp-section">On-target baseline</div>
+                <div class="sp-sect">On-target baseline</div>
                 <div class="sp-row">
                     <span class="sp-name">Target %</span>
                     <div style="display:flex;align-items:center;gap:5px">
-                        <input class="sp-inp" type="number" id="globalTarget" value="95" min="50" max="100">
+                        <input class="sp-inp" type="number" id="cfgTarget" value="95" min="50" max="100">
                         <span style="font-size:11px;color:var(--zm)">%</span>
                     </div>
                 </div>
-                <div class="sp-section">SLA norms per product group (hours)</div>
+                <div class="sp-sect">SLA norms per product group (hours)</div>
                 <div id="settingsRows"></div>
                 <button class="sp-save" onclick="saveSettings()">Save &amp; apply</button>
             </div>
         </div>
     </div>
 
-    <div class="footer"><strong>Zibber</strong> · Production Monitor MTD v6 · <span id="footerDate"></span> · #SERIOUSIMPACT</div>
+    <div class="footer"><strong>Zibber</strong> · Production Monitor · <span id="footerDate"></span> · #SERIOUSIMPACT</div>
 </div>
 
 <script>
@@ -578,638 +541,639 @@
         {key:'Matterport',sla:24},{key:'KuulaTour',sla:24},{key:'Drone video',sla:24},
         {key:'Artist impression',sla:72},{key:'Evening impression',sla:24},{key:'WOFL',sla:24},
     ];
-    let CFG = JSON.parse(localStorage.getItem('zbV6Cfg')||'null')||{
+    const KEY_MAP = {
+        'Photography':'photo','Floorplanner':'floor','Measurement':'meas','CAD Report':'cad',
+        'Video':'vid','Social media video':'soc','Social Media Reel':'reel','360 tour':'tour',
+        'Drone photography':'drone','Matterport':'mat','KuulaTour':'kuula','Drone video':'dvid',
+        'Artist impression':'art','Evening impression':'eve','WOFL':'wofl','Spotlight':'spot',
+    };
+    const PROD_KEYS = [
+        ['photo','Photography'],['floor','Floorplanner'],['meas','Measurement'],['cad','CAD Report'],
+        ['vid','Video'],['soc','Social media video'],['reel','Social Media Reel'],['tour','360 tour'],
+        ['drone','Drone photography'],['mat','Matterport'],['kuula','KuulaTour'],['dvid','Drone video'],
+        ['art','Artist impression'],['eve','Evening impression'],['wofl','WOFL'],
+    ];
+
+    let CFG = JSON.parse(localStorage.getItem('zbV8Cfg')||'null') || {
         target:95,
         sla:Object.fromEntries(PROD_CFG.map(p=>[p.key,p.sla]))
     };
 
-    // ─── MTD WINDOW ───────────────────────────────────────────────────────────────
-    const NOW      = new Date();
-    const MTD_YEAR = NOW.getFullYear();
-    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    const MTD_MONTH = MONTH_NAMES[NOW.getMonth()];
-
-    // ─── REAL DATA — daily = current month only, weekly = all weeks ────────────
-    let DAILY_RAW    = [];
-    let WEEKLY_RAW   = [];
-    let PRODUCTS_RAW = [];
-    let ORDERS_RAW   = [];
-    let BREACH_RAW   = [];
-    let RETURNS_RAW  = [];
-    let REVISIONS_RAW= [];
-
-    async function loadData() {
-        const res  = await fetch('/dashboard/mtd?country=' + (activeLand || 'ALL'));
-        const data = await res.json();
-        DAILY_RAW    = data.daily;
-        WEEKLY_RAW   = data.weekly;
-        PRODUCTS_RAW = data.products;
-        ORDERS_RAW   = data.orders;
-        BREACH_RAW   = data.breach;
-        RETURNS_RAW  = data.returns   || [];
-        REVISIONS_RAW= data.revisions || [];
-    }
-
     // ─── STATE ────────────────────────────────────────────────────────────────────
-    let activeLand = 'ALL';
+    let DATA        = {periods:[],products:[],orders:[],breach:[],returns:[],revisions:[]};
+    let activeLand  = 'ALL';
     let activeProds = new Set(PROD_CFG.map(p=>p.key));
-    let charts = {};
+    let activePeriod= 'day';
+    let selectedPeriod = null;
+    let charts      = {};
 
     // ─── HELPERS ─────────────────────────────────────────────────────────────────
-    const n   = v => typeof v==='number'?Math.round(v).toLocaleString('en'):(v||'—');
+    const n   = v => typeof v==='number'?Math.round(v).toLocaleString('nl'):v||'—';
     const pct = (a,b) => b?Math.round(a/b*1000)/10:0;
-    const getSla = key => CFG.sla[key]||PROD_CFG.find(p=>p.key===key)?.sla||24;
-
+    const getSla = k => CFG.sla[k]||PROD_CFG.find(p=>p.key===k)?.sla||24;
     function pb(p){
         const t=CFG.target;
-        return`<span class="b ${p>=t?'bg':p>=(t-10)?'ba':'br'}">${p.toFixed(1)}%</span>`;
-    }
-    // Normalize a daily/weekly row — fill missing fields with 0 or fallback
-    function norm(r){
-        return {
-            d:        r.d||r.day||'',
-            day:      r.d||r.day||'',
-            week:     r.week||'',
-            label:    r.label||r.week||'',
-            ordTot:   r.ordTot||0,
-            ordDel:   r.ordDel||r.ordTot||0,
-            ordOn:    r.ordOn||0,
-            returns:  r.returns||0,
-            revisions:r.revisions||0,
-            prodTot:  r.prodTot||0,
-            prodDel:  r.prodDel||r.prodTot||0,
-            prodOn:   r.prodOn||0,
-            lt:       r.lt||0,
-            ftr:      r.ftr||0,
-            both:     r.both||0,
-        };
+        return '<span class="b '+(p>=t?'bg':p>=(t-10)?'ba':'br')+'">'+p.toFixed(1)+'%</span>';
     }
     function vsDelta(p){
         const d=(p-CFG.target).toFixed(1);
-        return d>=0?`<span style="color:#1a6b35;font-weight:600">+${d}%</span>`
-            :`<span style="color:var(--zr);font-weight:600">${d}%</span>`;
+        return d>=0
+            ?'<span style="color:#1a6b35;font-weight:600">+'+d+'%</span>'
+            :'<span style="color:var(--zr);font-weight:600">'+d+'%</span>';
+    }
+    function breachBadge(r){
+        const m={lt:'<span class="b ba">LT breach</span>',ftr:'<span class="b br">FTR breach</span>',
+            both:'<span class="b br">LT + FTR</span>',ret:'<span class="b br">Return</span>'};
+        return m[r]||'—';
+    }
+    function statusCell(s){
+        const cls={ok:'bg',lt:'ba',ftr:'br',both:'br',revision:'bp'};
+        const lbl={ok:'on target',lt:'LT breach',ftr:'FTR breach',both:'LT+FTR',revision:'revisie'};
+        return '<span class="b '+(cls[s]||'ba')+'">'+(lbl[s]||s)+'</span>';
+    }
+    function links(id){
+        return '<div class="elinks">'+
+            '<a class="elink" href="https://zone.zibber.nl/orders/'+id+'" target="_blank">Zone</a>'+
+            '<a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~'+id+'" target="_blank">JOI</a>'+
+            '<a class="elink" href="https://stream.bright-river.com/all/find/'+id+'" target="_blank">STREAM</a>'+
+            '</div>';
+    }
+    function filterLand(arr){ return activeLand==='ALL'?arr:arr.filter(r=>r.country===activeLand); }
+    function filterProds(arr,f='key'){ return arr.filter(r=>activeProds.has(r[f])); }
+    function getWeekNum(d){
+        var dt=new Date(d),j=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));
+        j.setUTCDate(j.getUTCDate()+4-(j.getUTCDay()||7));
+        return Math.ceil((((j-new Date(Date.UTC(j.getUTCFullYear(),0,1)))/86400000)+1)/7);
     }
 
-    // Status cell color: ok=green, lt=amber, return=red, revision=purple
-    function statusCls(status){
-        if(!status||status==='ok') return 'cg';
-        if(status==='lt') return 'co';
-        if(status==='revision') return 'cp';
-        return 'cr'; // return, breach, both
-    }
-    function statusBadge(status){
-        if(!status||status==='ok') return '<span class="b bg">on target</span>';
-        if(status==='lt') return '<span class="b ba">lead time</span>';
-        if(status==='revision') return '<span class="b bp">revision</span>';
-        if(status==='return') return '<span class="b br">return</span>';
-        return '<span class="b br">breach</span>';
-    }
-    function breachLabel(r){
-        const map={lt:'<span class="b ba">Lead time</span>',ftr:'<span class="b ba">FTR</span>',both:'<span class="b br">LT + FTR</span>','lt+return':'<span class="b br">LT + Return</span>',return:'<span class="b br">Return</span>','lt+revision':'<span class="b ba">LT + Revision</span>',revision:'<span class="b bp">Revision</span>'};
-        return map[r]||'—';
-    }
-    function filterLand(arr){return activeLand==='ALL'?arr:arr.filter(r=>r.country===activeLand);}
-    function filterProds(arr,f='key'){return arr.filter(r=>activeProds.has(r[f]));}
-    function getWeekNum(d){const dt=new Date(d),j=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));j.setUTCDate(j.getUTCDate()+4-(j.getUTCDay()||7));return Math.ceil((((j-new Date(Date.UTC(j.getUTCFullYear(),0,1)))/86400000)+1)/7);}
-
-    // ─── KPI ─────────────────────────────────────────────────────────────────────
-    function renderKPI(){
-        const rows  = DAILY_RAW.map(norm);
-        const tOrd  = rows.reduce((s,r)=>s+(r.ordTot||0),0);
-        const tDel  = rows.reduce((s,r)=>s+(r.ordDel||r.ordTot||0),0);
-        const tOn   = rows.reduce((s,r)=>s+(r.ordOn||0),0);
-        const tRet  = rows.reduce((s,r)=>s+(r.returns||0),0);
-        const tRev  = rows.reduce((s,r)=>s+(r.revisions||0),0);
-        const tBr   = Math.max(0,tDel-tOn-tRev);
-        const tProd = rows.reduce((s,r)=>s+(r.prodTot||0),0);
-        const tPDel = rows.reduce((s,r)=>s+(r.prodDel||r.prodTot||0),0);
-        const tLt   = rows.reduce((s,r)=>s+(r.lt||0),0);
-
-        document.getElementById('k-ord-tot').textContent=n(tOrd);
-        document.getElementById('kd-ord-tot').textContent=MTD_MONTH+' '+MTD_YEAR;
-        document.getElementById('k-ord-del').textContent=n(tDel);
-        document.getElementById('kd-ord-del').textContent=pct(tDel,tOrd).toFixed(1)+'% of orders';
-        document.getElementById('k-ord-prog').textContent=n(tOrd-tDel);
-        document.getElementById('kd-ord-prog').textContent=pct(tOrd-tDel,tOrd).toFixed(1)+'% open';
-        document.getElementById('k-ord-on').textContent=n(tOn);
-        document.getElementById('kd-ord-on').className='kdelta '+(pct(tOn,tDel)>=CFG.target?'up':'dn');
-        document.getElementById('kd-ord-on').textContent=pct(tOn,tDel).toFixed(1)+'% — target '+CFG.target+'%';
-        document.getElementById('k-breach').textContent=n(Math.max(0,tBr));
-        document.getElementById('kd-breach').textContent=pct(Math.max(0,tBr),tDel).toFixed(1)+'% breach rate';
-        document.getElementById('k-prod-tot').textContent=n(tProd);
-        document.getElementById('kd-prod-tot').textContent=activeProds.size+' product types';
-        document.getElementById('k-prod-del').textContent=n(tPDel);
-        document.getElementById('kd-prod-del').textContent=pct(tPDel,tProd).toFixed(1)+'% delivered';
-        document.getElementById('k-returns').textContent=n(tRet);
-        document.getElementById('kd-returns').textContent=pct(tRet,tDel).toFixed(1)+'% return rate';
-        document.getElementById('k-revisions').textContent=n(tRev);
-        document.getElementById('kd-revisions').textContent='client requests';
-        document.getElementById('k-lt').textContent=n(tLt);
-        document.getElementById('kd-lt').textContent=pct(tLt,tPDel).toFixed(1)+'% of productions';
-        document.getElementById('breachCount').textContent=n(Math.max(0,tBr)+tRet);
-        document.getElementById('returnCount').textContent=n(tRet+tRev);
+    // ─── DATA LOADING ─────────────────────────────────────────────────────────────
+    async function loadData(){
+        const btn=document.getElementById('refreshBtn');
+        const overlay=document.getElementById('loadingOverlay');
+        btn.classList.add('loading');
+        btn.textContent='↻ Loading...';
+        overlay.classList.add('show');
+        try {
+            const res  = await fetch('/dashboard/v8?country='+activeLand);
+            const json = await res.json();
+            DATA = json;
+            buildChips();
+            renderAll();
+            document.getElementById('lastUpdated').textContent =
+                new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+        } catch(e) {
+            console.error('Load failed:', e);
+            alert('Load failed — check if the API is reachable');
+        } finally {
+            btn.classList.remove('loading');
+            btn.textContent='↻ Refresh';
+            overlay.classList.remove('show');
+        }
     }
 
-    // ─── EXTERNAL TOOLTIP ────────────────────────────────────────────────────────
-    function getTooltipEl(){
-        let el=document.getElementById('zTooltip');
-        if(!el){el=document.createElement('div');el.id='zTooltip';el.style.cssText='position:fixed;z-index:9999;pointer-events:none;background:rgba(15,25,50,.94);color:#fff;border-radius:10px;padding:12px 14px;font-size:11px;line-height:1.7;min-width:210px;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:opacity .15s;opacity:0';document.body.appendChild(el);}
-        return el;
+    // ─── MOCK DATA (verwijder zodra API live is) ──────────────────────────────────
+    function loadMockData(){
+        // periods: day or week rows based on activePeriod
+        // generated from appointment scheduled_at
+        const today = new Date();
+        const periods = [];
+        for(let i=29;i>=0;i--){
+            const d = new Date(today); d.setDate(d.getDate()-i);
+            const ds = d.toISOString().slice(0,10);
+            const wkd = i>20?Math.floor(Math.random()*3):Math.floor(Math.random()*40+20);
+            const del = Math.floor(wkd*(0.7+Math.random()*0.25));
+            const onT = Math.floor(del*(0.75+Math.random()*0.2));
+            const lt  = Math.floor((del-onT)*0.3);
+            const ftr = del-onT-lt;
+            const ret = Math.floor(del*0.02);
+            const rev = Math.floor(del*0.05);
+            // Create per-country split so land filter works on mock data
+            var countries=['NL','BE','DE'];
+            var splits=[0.6,0.25,0.15];
+            countries.forEach(function(c,ci){
+                var f=splits[ci];
+                var ca=Math.round(wkd*f), cd=Math.round(del*f), con=Math.round(onT*f);
+                var clt=Math.round(lt*f), cftr=Math.round(ftr*f);
+                periods.push({
+                    period:ds, label:ds.slice(5), type:'day', country:c,
+                    appts:ca, delivered:cd, in_progress:ca-cd,
+                    on_target:con, breach:cd-con,
+                    lt_breach:clt, ftr_breach:cftr,
+                    returns:Math.round(ret*f), revisions:Math.round(rev*f),
+                });
+            });
+        }
+
+        const products = PROD_CFG.map(p=>{
+            const a=Math.floor(Math.random()*300+20);
+            const del=Math.floor(a*0.9);
+            const on=Math.floor(del*(0.75+Math.random()*0.2));
+            const lt=Math.floor((del-on)*0.3);
+            const ftr=del-on-lt;
+            return {key:p.key,sla_norm:getSla(p.key),
+                appts:a,delivered:del,in_progress:a-del,
+                on_target:on,breach:del-on,
+                lt_breach:lt,ftr_breach:ftr,returns:0,revisions:Math.floor(del*0.04)};
+        });
+
+        const orders = Array.from({length:50},(_,i)=>({
+            id:String(1660000+i),country:['NL','BE','DE'][i%3],
+            order_date:'2026-0'+(Math.floor(i/17)+5)+'-'+String(Math.floor(i%28)+1).padStart(2,'0'),
+            appt_date:'2026-0'+(Math.floor(i/17)+5)+'-'+String(Math.floor(i%28)+3).padStart(2,'0'),
+            on_target:i%5!==0,
+            photo:i%3!==0?{id:String(700000+i*3),ok:i%4!==0,status:i%4===0?'lt':'ok',deliveries:i%7===0?2:1}:null,
+            floor:{id:String(700001+i*3),ok:i%5!==0,status:i%5===0?'ftr':'ok',deliveries:i%5===0?2:1},
+            tour:i%2===0?{id:String(700002+i*3),ok:true,status:'ok',deliveries:1}:null,
+        }));
+
+        const breach = products.flatMap(p=>
+            Array.from({length:Math.min(p.breach,5)},(_,j)=>({
+                id:String(1660100+j),country:'NL',prod:p.key,
+                appt_date:'2026-06-'+String(j+1).padStart(2,'0'),
+                first_upload:'2026-06-'+String(j+3).padStart(2,'0')+' 14:30',
+                deadline:'2026-06-'+String(j+2).padStart(2,'0')+' 17:00',
+                turnaround_h:p.sla_norm+(Math.random()*48|0),
+                sla_norm:p.sla_norm,deliveries:j%3===0?2:1,
+                reason:j%3===0?'ftr':'lt',return_reason:'',
+            }))
+        ).slice(0,100);
+
+        const returns = [
+            {id:'1661000',country:'NL',prod:'Photography',return_date:'2026-06-10',
+                return_reason:'Quality insufficient',appt_notes:'Lighting incorrect',
+                upload:'2026-06-11 10:00',sla_ok:false},
+            {id:'1661001',country:'BE',prod:'Floorplanner',return_date:'2026-06-08',
+                return_reason:'Wrong recording',appt_notes:'Kitchen not included',
+                upload:'2026-06-09 14:00',sla_ok:true},
+        ];
+
+        const revisions = [
+            {id:'1662000',country:'NL',prod:'Floorplanner',rev_date:'2026-06-12',
+                notes:'Please add terrace to floor plan',expected_at:'2026-06-13',status:'completed'},
+            {id:'1662001',country:'NL',prod:'Photography',rev_date:'2026-06-11',
+                notes:'Additional photo of bathroom requested',expected_at:'2026-06-12',status:'pending'},
+        ];
+
+        DATA = {periods, products, orders, breach, returns, revisions};
+        buildChips();
+        renderAll();
+        document.getElementById('lastUpdated').textContent =
+            new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' (mock)';
     }
-    function externalTooltip(context){
-        const{chart,tooltip}=context;
-        const el=getTooltipEl();
-        if(tooltip.opacity===0){el.style.opacity='0';return;}
-        const i=tooltip.dataPoints[0].dataIndex;
-        var _tooltipRows = [...(activePeriod==='week'?WEEKLY_RAW:DAILY_RAW)].map(norm).reverse();
-        const r=_tooltipRows[i];if(!r)return;
-        const nr=norm(r);
-        const oOnP=pct(nr.ordOn,nr.ordDel),pOnP=pct(nr.prodOn,nr.prodDel);
-        const row=(lbl,val,col,sub)=>`<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:rgba(255,255,255,.6)">${lbl}</span><span style="color:${col||'#fff'};font-weight:500">${n(Math.round(val))}${sub?` <span style="color:rgba(255,255,255,.4);font-size:10px">(${sub})</span>`:''}</span></div>`;
-        el.innerHTML=`<div style="font-weight:600;font-size:12px;margin-bottom:6px">${r.d}</div>`+
-            `<div style="color:rgba(255,255,255,.3);font-size:10px;margin-bottom:5px">─────────────────────</div>`+
-            `<div style="color:#7ec8f4;font-weight:600;margin-bottom:2px">📦 Orders</div>`+
-            row('Total',nr.ordTot,'')+row('Delivered',nr.ordDel,'')+
-            row('In progress',nr.ordTot-nr.ordDel,'#EF9F27')+
-            row('On target',r.ordOn,'#2FC974',oOnP.toFixed(1)+'%')+
-            row('Returns (Zibber)',nr.returns,'#E24B4A')+
-            row('Revisions (client)',nr.revisions,'#8B5CF6')+
-            `<div style="color:rgba(255,255,255,.3);font-size:10px;margin:5px 0">─────────────────────</div>`+
-            `<div style="color:#6ee8a8;font-weight:600;margin-bottom:2px">🔧 Productions</div>`+
-            row('Total',nr.prodTot,'')+row('On target',nr.prodOn,'#2FC974',pOnP.toFixed(1)+'%')+
-            row('LT breach',nr.lt,'#EF9F27')+row('FTR breach',nr.ftr,'#EF9F27')+row('Both',nr.both,'#E24B4A');
-        const rect=chart.canvas.getBoundingClientRect();
-        const x=rect.left+tooltip.caretX,y=rect.top+tooltip.caretY,w=230;
-        el.style.left=(x+w+16>window.innerWidth?x-w-12:x+12)+'px';
-        el.style.top=Math.max(8,y-80)+'px';el.style.opacity='1';
+
+    // ─── TOOLTIP ─────────────────────────────────────────────────────────────────
+    let _tip = null;
+    function getTooltip(){
+        if(!_tip){
+            _tip=document.createElement('div');
+            _tip.style.cssText='position:fixed;z-index:9999;pointer-events:none;background:rgba(15,25,50,.95);color:#fff;border-radius:10px;padding:12px 14px;font-size:11px;line-height:1.7;min-width:230px;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:opacity .12s;opacity:0';
+            document.body.appendChild(_tip);
+        }
+        return _tip;
+    }
+    function externalTooltip(ctx){
+        var tip=getTooltip(), {chart,tooltip}=ctx;
+        if(tooltip.opacity===0){tip.style.opacity='0';return;}
+        var i=tooltip.dataPoints[0].dataIndex;
+        var _fpRows=filterPeriods();
+        var r=_fpRows[i];
+        if(!r){tip.style.opacity='0';return;}
+        var row=function(l,v,c,sub){
+            return '<div style="display:flex;justify-content:space-between;gap:16px">'+
+                '<span style="color:rgba(255,255,255,.55)">'+l+'</span>'+
+                '<span style="color:'+(c||'#fff')+';font-weight:500">'+v+(sub?' <span style="color:rgba(255,255,255,.35);font-size:10px">('+sub+')</span>':'')+'</span>'+
+                '</div>';
+        };
+        var div=function(label){
+            return '<div style="color:rgba(255,255,255,.25);font-size:10px;margin:5px 0;letter-spacing:.05em">'+label+'</div>';
+        };
+        var del=r.delivered||0, prog=r.in_progress||0, on=r.on_target||0;
+        var br=r.breach||0, lt=r.lt_breach||0, ftr=r.ftr_breach||0;
+        var ret=r.returns||0, rev=r.revisions||0;
+        tip.innerHTML=
+            '<div style="font-weight:600;font-size:12px;margin-bottom:6px">'+(r.label||r.period)+'</div>'+
+            div('── ORDERS ──────────────────────')+
+            row('Created',n(r.appts))+
+            row('Delivered',n(del),'#2FC974',pct(del,r.appts).toFixed(0)+'%')+
+            row('In progress',n(prog),'#EF9F27',pct(prog,r.appts).toFixed(0)+'%')+
+            div('── PRODUCTIONS ─────────────────')+
+            row('On target',n(on),'#2FC974',pct(on,del).toFixed(1)+'%')+
+            row('SLA breach',n(br),'#E24B4A',pct(br,del).toFixed(1)+'%')+
+            div('── DELIVERIES / BREACH ─────────')+
+            row('Lead time breach',n(lt),'#EF9F27')+
+            row('FTR breach',n(ftr),'#E24B4A')+
+            row('Returns (Zibber)',n(ret),'#E24B4A')+
+            row('Revisions (client)',n(rev),'#8B5CF6');
+        var rect=chart.canvas.getBoundingClientRect();
+        var x=rect.left+tooltip.caretX, y=rect.top+tooltip.caretY, w=260;
+        tip.style.left=(x+w+16>window.innerWidth?x-w-12:x+12)+'px';
+        tip.style.top=Math.max(8,y-110)+'px';
+        tip.style.opacity='1';
     }
 
     // ─── MAIN CHART ──────────────────────────────────────────────────────────────
     function buildMainChart(){
-        var rawRows = activePeriod==='week' ? WEEKLY_RAW : DAILY_RAW;
-        const rows=[...rawRows].map(norm).reverse();
-        const labels = activePeriod==='week'
-            ? rows.map(r=>r.week||r.label||'')
-            : rows.map(r=>(r.d||r.day||'').slice(5));
-        const t=CFG.target;
-        document.getElementById('tgtLegend').textContent=t+'%';
+        var rows = filterPeriods();
+        var labels = rows.map(r=>r.label||r.period.slice(5));
+        var vols   = rows.map(r=>r.appts||0);
+        var breach = rows.map(r=>r.breach||0);
+        var onPct  = rows.map(r=>pct(r.on_target,r.delivered));
+        var ltPct  = rows.map(r=>pct((r.delivered||0)-(r.lt_breach||0),r.delivered||1));
+        var t = CFG.target;
+        document.getElementById('tgtLbl').textContent=t+'%';
+        document.getElementById('chartTitle').textContent=
+            activePeriod==='day'?'Daily production — last 30 days':'Weekly production — last 30 days';
         if(charts.main)charts.main.destroy();
-        const canvas=document.getElementById('mainChart');
-        canvas.onmouseleave=()=>{const el=getTooltipEl();if(el)el.style.opacity='0';};
+        var canvas=document.getElementById('mainChart');
+        canvas.onmouseleave=function(){var el=getTooltip();if(el)el.style.opacity='0';};
         charts.main=new Chart(canvas,{
             data:{labels,datasets:[
-                    {type:'bar',  data:rows.map(r=>r.ordTot),backgroundColor:'rgba(31,128,240,.13)',borderColor:'rgba(31,128,240,.3)',borderWidth:1,yAxisID:'yVol',order:4,borderRadius:3,borderSkipped:false,label:'Order volume'},
-                    {type:'line', data:rows.map(r=>pct(r.ordOn,r.ordDel)),borderColor:'#1F80F0',borderWidth:2.5,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false,pointBackgroundColor:'#1F80F0',yAxisID:'yPct',order:1,label:'Orders on target %'},
-                    {type:'line', data:rows.map(r=>pct(r.prodOn,r.prodDel)),borderColor:'#2FC974',borderWidth:2.5,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false,pointBackgroundColor:'#2FC974',yAxisID:'yPct',order:2,label:'Productions on target %'},
-                    {type:'line', data:rows.map(()=>t),borderColor:'#1F2E4A',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false,yAxisID:'yPct',order:3,label:'Target'},
+                    {type:'bar',label:'Volume',data:vols,backgroundColor:'rgba(31,128,240,.15)',borderColor:'rgba(31,128,240,.3)',borderWidth:1,yAxisID:'yVol',order:5,borderRadius:3,borderSkipped:false},
+                    {type:'bar',label:'SLA breach',data:breach,backgroundColor:'rgba(226,75,74,.55)',borderColor:'rgba(226,75,74,.7)',borderWidth:1,yAxisID:'yVol',order:4,borderRadius:3,borderSkipped:false},
+                    {type:'line',label:'On target %',data:onPct,borderColor:'#2FC974',borderWidth:2.5,pointRadius:3,pointHoverRadius:5,tension:.3,fill:false,pointBackgroundColor:'#2FC974',yAxisID:'yPct',order:1},
+                    {type:'line',label:'LT ok %',data:ltPct,borderColor:'#1F80F0',borderWidth:2,pointRadius:3,pointHoverRadius:5,tension:.3,fill:false,pointBackgroundColor:'#1F80F0',yAxisID:'yPct',order:2},
+                    {type:'line',label:'Target',data:rows.map(()=>t),borderColor:'#1F2E4A',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false,yAxisID:'yPct',order:3},
                 ]},
             options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+                layout:{padding:{right:10}},
+                clip:false,
                 plugins:{legend:{display:false},tooltip:{enabled:false,external:externalTooltip}},
                 scales:{
-                    x:{ticks:{font:{size:10},color:'#888',autoSkip:false,maxRotation:45},grid:{display:false}},
-                    yPct:{position:'left',min:0,max:100,ticks:{font:{size:10},color:'#888',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.05)'}},
-                    yVol:{position:'right',beginAtZero:true,ticks:{font:{size:10},color:'rgba(31,128,240,.45)',callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{display:false}},
+                    x:{ticks:{font:{size:10},color:'#888',autoSkip:true,maxTicksLimit:activePeriod==='day'?15:8,maxRotation:45},grid:{display:false}},
+                    yPct:{position:'left',min:0,max:100,ticks:{font:{size:10},color:'#888',callback:function(v){return v+'%';}},grid:{color:'rgba(0,0,0,.05)'}},
+                    yVol:{position:'right',beginAtZero:true,ticks:{font:{size:10},color:'rgba(31,128,240,.5)',padding:4,callback:function(v){return v>=1000?Math.round(v/1000)+'k':v;}},grid:{display:false}},
                 }
             }
         });
     }
 
-    // ─── BREACH DONUT ────────────────────────────────────────────────────────────
-    function buildBreachDonut(){
-        const _dr=DAILY_RAW.map(norm);
-        const lt   = _dr.reduce((s,r)=>s+r.lt,0);
-        const ftr  = _dr.reduce((s,r)=>s+r.ftr,0);
-        const both = _dr.reduce((s,r)=>s+r.both,0);
-        const ret  = _dr.reduce((s,r)=>s+r.returns,0);
-        const rev  = _dr.reduce((s,r)=>s+r.revisions,0);
-        const on   = _dr.reduce((s,r)=>s+r.prodOn,0);
-        const tot  = _dr.reduce((s,r)=>s+r.prodTot,0);
-        if(charts.bDonut)charts.bDonut.destroy();
-        charts.bDonut=new Chart(document.getElementById('breachDonut'),{
-            type:'doughnut',
-            data:{labels:['Lead time','FTR failure','LT + FTR','Return (Zibber)','Revision (client)','On target'],
-                datasets:[{data:[lt,ftr,both,ret,rev,on],backgroundColor:['#EF9F27','#1F80F0','#E24B4A','#E24B4A','#8B5CF6','#2FC974'],borderWidth:2,borderColor:'#fff'}]
+    // ─── DONUT ───────────────────────────────────────────────────────────────────
+    function buildDonut(){
+        var rows=filterPeriods();
+        var lt  =rows.reduce(function(s,r){return s+(r.lt_breach||0);},0);
+        var ftr =rows.reduce(function(s,r){return s+(r.ftr_breach||0);},0);
+        var ret =rows.reduce(function(s,r){return s+(r.returns||0);},0);
+        var rev =rows.reduce(function(s,r){return s+(r.revisions||0);},0);
+        var on  =rows.reduce(function(s,r){return s+(r.on_target||0);},0);
+        var tot =rows.reduce(function(s,r){return s+(r.delivered||0);},0);
+        if(charts.donut)charts.donut.destroy();
+        charts.donut=new Chart(document.getElementById('donutChart'),{type:'doughnut',
+            data:{labels:['LT breach','FTR breach','Return (Zibber)','Revision (client)','On target'],
+                datasets:[{data:[lt,ftr,ret,rev,on],
+                    backgroundColor:['#EF9F27','#E24B4A','#C0392B','#8B5CF6','#2FC974'],
+                    borderWidth:2,borderColor:'#fff'}]
             },
             options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
                 plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:8}},
-                    tooltip:{callbacks:{label:c=>`${c.label}: ${n(c.parsed)} (${pct(c.parsed,tot).toFixed(1)}%)`}}
+                    tooltip:{callbacks:{label:function(c){return c.label+': '+n(c.parsed)+' ('+pct(c.parsed,tot).toFixed(1)+'%)';}}}
                 }
             }
         });
     }
 
-    // ─── WoW ─────────────────────────────────────────────────────────────────────
-    function renderWoW(){
-        var sorted=WEEKLY_RAW.map(norm);
-        var curWk='W'+String(getWeekNum(new Date().toISOString().slice(0,10))).padStart(2,'0');
-        var tO=0,tD=0,tOn=0,tRet=0,tRev=0,tP=0,tPD=0,tPOn=0,tLt=0,tFtr=0;
-        var rows=sorted.map(function(w,i){
-            var prev=sorted[i-1];
-            var oP=pct(w.ordOn,w.ordDel);
-            var delta='';
-            if(prev&&prev.ordDel>0){
-                var d=(oP-pct(prev.ordOn,prev.ordDel)).toFixed(1);
-                var col=parseFloat(d)>=0?'#1a6b35':'var(--zr)';
-                delta=' <span style="font-size:10px;color:'+col+';font-weight:600">'+(parseFloat(d)>=0?'▲':'▼')+Math.abs(parseFloat(d))+'%</span>';
-            }
-            var isCur=w.week===curWk;
-            var br=Math.max(0,w.ordDel-w.ordOn);
-            tO+=w.ordTot;tD+=w.ordDel;tOn+=w.ordOn;
-            tRet+=(w.returns||0);tRev+=(w.revisions||0);
-            tP+=w.prodTot;tPD+=w.prodDel;tPOn+=w.prodOn;tLt+=w.lt;tFtr+=w.ftr;
-            var wk=w.week;
-            var tr=document.createElement('tr');
-            tr.style.cssText='cursor:pointer;'+(isCur?'background:#FFFBEB':'');
-            tr.onclick=function(){toggleWowDrill(wk);};
-            tr.innerHTML=
-                '<td class="tl" style="font-weight:600">'+(w.label||w.week)+(isCur?'<span class="tbadge">NOW</span>':'')+'</td>'+
-                '<td>'+n(w.ordTot)+'</td>'+
-                '<td><span class="b bg">'+n(w.ordDel)+'</span></td>'+
-                '<td>'+pb(oP)+delta+'</td>'+
-                '<td>'+(br>0?'<span class="b br">'+n(br)+'</span>':'—')+'</td>'+
-                '<td>'+((w.returns||0)>0?'<span class="b br">'+n(w.returns)+'</span>':'—')+'</td>'+
-                '<td>'+((w.revisions||0)>0?'<span class="b bp">'+n(w.revisions)+'</span>':'—')+'</td>'+
-                '<td class="col-sep"></td>'+
-                '<td>'+n(w.prodTot)+'</td>'+
-                '<td>'+pb(pct(w.prodOn,w.prodDel))+'</td>'+
-                '<td>'+(w.lt>0?'<span class="b ba">'+n(w.lt)+'</span>':'—')+'</td>'+
-                '<td>'+(w.ftr>0?'<span class="b ba">'+n(w.ftr)+'</span>':'—')+'</td>';
-            return tr.outerHTML;
+    // ─── PERIOD FILTERING ────────────────────────────────────────────────────────
+    function filterPeriods(){
+        // Apply land filter: periods need a country breakdown from the API
+        // For now, if country filter is active and periods have country data, filter
+        // Otherwise periods are pre-filtered server-side via ?country= param
+        var all = (DATA.periods||[]).filter(function(r){
+            return activeLand==='ALL' || !r.country || r.country===activeLand;
         });
-        document.getElementById('wowBody').innerHTML=rows.join('');
-        document.getElementById('wowFoot').innerHTML=
-            '<tr class="tfoot">'+
-            '<td class="tl">Total</td>'+
-            '<td>'+n(tO)+'</td><td>'+n(tD)+'</td>'+
-            '<td>'+pb(pct(tOn,tD))+'</td>'+
-            '<td>'+n(Math.max(0,tD-tOn))+'</td>'+
-            '<td>'+n(tRet)+'</td><td>'+n(tRev)+'</td>'+
-            '<td class="col-sep"></td>'+
-            '<td>'+n(tP)+'</td><td>'+pb(pct(tPOn,tPD))+'</td>'+
-            '<td>'+n(tLt)+'</td><td>'+n(tFtr)+'</td>'+
-            '</tr>';
+        if(activePeriod==='week'){
+            // Aggregate daily rows into weeks
+            var weeks={};
+            all.forEach(function(r){
+                var wk='W'+String(getWeekNum(r.period)).padStart(2,'0');
+                if(!weeks[wk]){
+                    var d=new Date(r.period);
+                    var mon=new Date(d);mon.setDate(d.getDate()-d.getDay()+1);
+                    var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+                    var fmt=function(dt){return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});};
+                    weeks[wk]={period:wk,label:wk+' · '+fmt(mon)+' – '+fmt(sun),type:'week',
+                        appts:0,delivered:0,in_progress:0,on_target:0,breach:0,
+                        lt_breach:0,ftr_breach:0,returns:0,revisions:0};
+                }
+                var w=weeks[wk];
+                w.appts+=r.appts||0;w.delivered+=r.delivered||0;w.in_progress+=r.in_progress||0;
+                w.on_target+=r.on_target||0;w.breach+=r.breach||0;
+                w.lt_breach+=r.lt_breach||0;w.ftr_breach+=r.ftr_breach||0;
+                w.returns+=r.returns||0;w.revisions+=r.revisions||0;
+            });
+            return Object.values(weeks).sort(function(a,b){return a.period<b.period?-1:1;});
+        }
+        return all;
     }
 
-    function toggleChip(el,key){
-        el.classList.toggle('active');
-        if(activeProds.has(key))activeProds.delete(key);else activeProds.add(key);
-        renderAll();
+    // ─── KPI ─────────────────────────────────────────────────────────────────────
+    function renderKPI(){
+        var rows=filterPeriods();
+        var tAppts=rows.reduce(function(s,r){return s+(r.appts||0);},0);
+        var tDel  =rows.reduce(function(s,r){return s+(r.delivered||0);},0);
+        var tProg =rows.reduce(function(s,r){return s+(r.in_progress||0);},0);
+        var tOn   =rows.reduce(function(s,r){return s+(r.on_target||0);},0);
+        var tBr   =rows.reduce(function(s,r){return s+(r.breach||0);},0);
+        var tBrDirect = filterLand(DATA.breach||[]).length; // direct count as fallback
+        var tRet  =rows.reduce(function(s,r){return s+(r.returns||0);},0);
+        var tRev  =rows.reduce(function(s,r){return s+(r.revisions||0);},0);
+        var tLt   =rows.reduce(function(s,r){return s+(r.lt_breach||0);},0);
+        var tFtr  =rows.reduce(function(s,r){return s+(r.ftr_breach||0);},0);
+        var tOrd  =filterLand(DATA.orders||[]).length;
+
+        function set(id,val,delta,cls){
+            document.getElementById('k-'+id).textContent=n(val);
+            document.getElementById('k-'+id).className='kval'+(cls?' '+cls:'');
+            if(delta!==undefined&&document.getElementById('kd-'+id))
+                document.getElementById('kd-'+id).textContent=delta;
+        }
+        set('appt',tAppts,'30 dagen');
+        set('del',tDel,pct(tDel,tAppts).toFixed(1)+'% delivered','g');
+        set('prog',tProg,pct(tProg,tAppts).toFixed(1)+'% in progress','a');
+        set('on',tOn,pct(tOn,tDel).toFixed(1)+'% — target '+CFG.target+'%','g');
+        document.getElementById('kd-on').className='kdelta '+(pct(tOn,tDel)>=CFG.target?'up':'dn');
+        set('breach',tBr,pct(tBr,tDel).toFixed(1)+'% breach rate','r');
+        set('ret',tRet,pct(tRet,tDel).toFixed(1)+'% return rate','r');
+        set('rev',tRev,'client requests','p');
+        set('lt',tLt,pct(tLt,tDel).toFixed(1)+'% van deliveries','a');
+        set('ftr',tFtr,pct(tFtr,tDel).toFixed(1)+'% van deliveries','r');
+        set('ord',tOrd,'created in 30d');
+        document.getElementById('breachBadge').textContent=n(tBr);
+        document.getElementById('retBadge').textContent=n(tRet+tRev);
+    }
+
+    // ─── OVERVIEW TABLE ───────────────────────────────────────────────────────────
+    function renderOverview(){
+        var rows=filterPeriods();
+        var isWeek=activePeriod==='week';
+        var today=new Date().toISOString().slice(0,10);
+        var tA=0,tD=0,tP=0,tOn=0,tBr=0,tLt=0,tFtr=0,tRet=0,tRev=0;
+
+        document.getElementById('overviewBody').innerHTML=rows.map(function(r,i){
+            var isToday=r.period===today;
+            var oP=pct(r.on_target,r.delivered);
+            tA+=r.appts||0;tD+=r.delivered||0;tP+=r.in_progress||0;
+            tOn+=r.on_target||0;tBr+=r.breach||0;tLt+=r.lt_breach||0;
+            tFtr+=r.ftr_breach||0;tRet+=r.returns||0;tRev+=r.revisions||0;
+            var drillable=isWeek?'style="cursor:pointer" onclick="openDrill(\''+r.period+'\')"':'';
+            return '<tr'+(isToday?' class="tday"':'')+' '+drillable+'>'+
+                '<td class="tl" style="font-weight:600">'+(r.label||r.period)+(isToday?'<span class="tbadge">TODAY</span>':isWeek?'<span style="font-size:10px;color:var(--zb);margin-left:6px">↓ detail</span>':'')+'</td>'+
+                '<td>'+n(r.appts)+'</td>'+
+                '<td><span class="b bg">'+n(r.delivered)+'</span></td>'+
+                '<td>'+(r.in_progress>0?'<span class="b bo">'+n(r.in_progress)+'</span>':'—')+'</td>'+
+                '<td><span class="b bg">'+n(r.on_target)+'</span></td>'+
+                '<td>'+pb(oP)+'</td>'+
+                '<td class="csep"></td>'+
+                '<td>'+(r.breach>0?'<span class="b br">'+n(r.breach)+'</span>':'—')+'</td>'+
+                '<td>'+(r.lt_breach>0?'<span class="b ba">'+n(r.lt_breach)+'</span>':'—')+'</td>'+
+                '<td>'+(r.ftr_breach>0?'<span class="b ba">'+n(r.ftr_breach)+'</span>':'—')+'</td>'+
+                '<td>'+(r.returns>0?'<span class="b br">'+n(r.returns)+'</span>':'—')+'</td>'+
+                '<td>'+(r.revisions>0?'<span class="b bp">'+n(r.revisions)+'</span>':'—')+'</td>'+
+                '</tr>';
+        }).join('');
+
+        document.getElementById('overviewFoot').innerHTML='<tr class="tfoot">'+
+            '<td class="tl">Total 30d</td>'+
+            '<td>'+n(tA)+'</td>'+
+            '<td>'+n(tD)+'</td>'+
+            '<td>'+n(tP)+'</td>'+
+            '<td>'+n(tOn)+'</td>'+
+            '<td>'+pb(pct(tOn,tD))+'</td>'+
+            '<td class="csep"></td>'+
+            '<td>'+n(tBr)+'</td>'+
+            '<td>'+n(tLt)+'</td><td>'+n(tFtr)+'</td><td>'+n(tRet)+'</td><td>'+n(tRev)+'</td>'+
+            '</tr>';
+
+        document.getElementById('periodLabel').textContent=isWeek?'week':'day';
+        document.getElementById('clickHint').style.display=isWeek?'':'none';
     }
 
     // ─── WEEK DRILLDOWN ──────────────────────────────────────────────────────────
-    let selectedWeek = null;
-
-    function toggleWowDrill(wk) {
-        const sec = document.getElementById('wowDrillSection');
-        if (selectedWeek === wk) {
-            selectedWeek = null;
-            sec.style.display = 'none';
-            // clear highlighted row
-            document.querySelectorAll('#wowBody tr').forEach(r=>r.style.outline='');
-            return;
-        }
-        selectedWeek = wk || selectedWeek;
-        if (!selectedWeek) { sec.style.display='none'; return; }
-
-        // Find daily rows that belong to this week
-        const rows = DAILY_RAW.filter(r => {
-            const d = new Date(r.day || r.d);
-            const wkNum = 'W' + String(getWeekNum((r.day||r.d))).padStart(2,'0');
-            return wkNum === selectedWeek;
-        });
-
-        if (!rows.length) { sec.style.display='none'; return; }
-
-        const wkData = WEEKLY_RAW.find(w=>w.week===selectedWeek);
-        document.getElementById('wowDrillLabel').textContent = wkData ? wkData.label : selectedWeek;
-
-        document.getElementById('wowDrillBody').innerHTML = rows
-            .sort((a,b)=>(b.day||b.d).localeCompare(a.day||a.d))
-            .map(r=>{
-                const day = r.day||r.d;
-                const isToday = day === new Date().toISOString().slice(0,10);
-                const oP = pct(r.ordOn,r.ordDel), pP = pct(r.prodOn,r.prodDel);
-                const br = Math.max(0,r.ordDel-r.ordOn);
-                return`<tr${isToday?' style="background:#FFFBEB"':''}>
-        <td class="tl"><strong>${day}</strong>${isToday?'<span class="tbadge">TODAY</span>':''}</td>
-        <td>${n(r.ordTot)}</td><td>${pb(oP)}</td>
-        <td>${br>0?`<span class="b br">${n(br)}</span>`:'—'}</td>
-        <td>${n(r.prodTot)}</td><td>${pb(pP)}</td>
-        <td>${r.lt>0?`<span class="b ba">${n(r.lt)}</span>`:'—'}</td>
-        <td>${r.ftr>0?`<span class="b ba">${n(r.ftr)}</span>`:'—'}</td>
-      </tr>`;
-            }).join('');
-
-        sec.style.display = 'block';
-        sec.scrollIntoView({behavior:'smooth',block:'start'});
-    }
-
-    // ─── PERIOD TOGGLE ───────────────────────────────────────────────────────────
-    var activePeriod = 'day'; // 'day' or 'week'
-
-    function setPeriod(p){
-        activePeriod = p;
-        document.getElementById('periodDay').classList.toggle('active', p==='day');
-        document.getElementById('periodWeek').classList.toggle('active', p==='week');
-        var lbl = document.getElementById('monthLabelChart');
-        var prefix = p==='week' ? 'Weekly on-target % — ' : 'Daily on-target % — ';
-        document.getElementById('chartPeriodLabel').childNodes[0].textContent = prefix;
-        buildMainChart();
-    }
-
-    // ─── GLOBAL ORDER SEARCH ─────────────────────────────────────────────────────
-    function globalSearch(val){
-        var v=val.trim();
-        if(!v){ return; }
-        // Switch to order detail tab and filter there
-        switchTab('orders');
-        document.getElementById('globalOrderSearch').value=v;
-        // Also filter breach tab in background
-        renderOrders(v);
-        renderBreach(v);
-        // Highlight search input
-        var el=document.getElementById('globalOrderSearch');
-        el.style.borderColor=v?'var(--zb)':'var(--zborder)';
-    }
-
-    // ─── CONTROLS ────────────────────────────────────────────────────────────────
-    function setLand(btn,v){
-        document.querySelectorAll('.lbtn').forEach(b=>b.classList.remove('active'));
-        btn.classList.add('active');activeLand=v;renderAll();
-    }
-    function switchTab(t){
-        document.querySelectorAll('.tab').forEach(function(el,i){
-            el.classList.toggle('active',['overview','products','orders','breach','returns','perf'][i]===t);
-        });
-        document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
-        var target=document.getElementById('panel-'+t);
-        if(target) target.classList.add('active');
-        // Sync order search field with order/breach tab search boxes
-        var gv=document.getElementById('globalOrderSearch').value.trim();
-        if(t==='orders')  renderOrders(gv);
-        if(t==='breach')  renderBreach(gv);
-    }
-
-    // ─── SETTINGS ────────────────────────────────────────────────────────────────
-    function buildSettingsRows(){
-        document.getElementById('globalTarget').value=CFG.target;
-        document.getElementById('settingsRows').innerHTML=PROD_CFG.map(p=>`
-    <div class="sp-row"><span class="sp-name">${p.key}</span>
-    <div style="display:flex;align-items:center;gap:5px">
-      <input class="sp-inp" type="number" id="sla_${p.key.replace(/[\s.]/g,'_')}" value="${CFG.sla[p.key]||p.sla}" min="1" max="240">
-      <span style="font-size:11px;color:var(--zm)">hrs</span>
-    </div></div>`).join('');
-    }
-    function openSettings(){buildSettingsRows();document.getElementById('settingsOverlay').classList.add('open');}
-    function closeSettings(){document.getElementById('settingsOverlay').classList.remove('open');}
-    function saveSettings(){
-        CFG.target=parseInt(document.getElementById('globalTarget').value)||95;
-        PROD_CFG.forEach(p=>{const el=document.getElementById('sla_'+p.key.replace(/[\s.]/g,'_'));if(el)CFG.sla[p.key]=parseInt(el.value)||p.sla;});
-        localStorage.setItem('zbV6Cfg',JSON.stringify(CFG));
-        closeSettings();renderAll();
-    }
-
-    // ─── DAILY TABLE ─────────────────────────────────────────────────────────────
-    function renderDaily(){
+    function openDrill(wk){
+        if(selectedPeriod===wk){closeDrill();return;}
+        selectedPeriod=wk;
+        var days=(DATA.periods||[]).filter(function(r){
+            return 'W'+String(getWeekNum(r.period)).padStart(2,'0')===wk;
+        }).sort(function(a,b){return b.period.localeCompare(a.period);});
+        var wkData=filterPeriods().find(function(w){return w.period===wk;});
+        document.getElementById('drillTitle').textContent='Daily detail — '+(wkData?wkData.label:wk);
         var today=new Date().toISOString().slice(0,10);
-        var tO=0,tD=0,tOn=0,tRet=0,tRev=0,tP=0,tPD=0,tPOn=0,tLt=0,tFtr=0;
-        document.getElementById('dailyBody').innerHTML=DAILY_RAW.map(norm).map(function(r){
-            var isToday=r.day===today;
-            var oP=pct(r.ordOn,r.ordDel),pP=pct(r.prodOn,r.prodDel);
-            var br=Math.max(0,r.ordDel-r.ordOn);
-            tO+=r.ordTot;tD+=r.ordDel;tOn+=r.ordOn;tRet+=r.returns;tRev+=r.revisions;
-            tP+=r.prodTot;tPD+=r.prodDel;tPOn+=r.prodOn;tLt+=r.lt;tFtr+=r.ftr;
-            return '<tr class="'+(isToday?'today-row':'')+'">'+
-                '<td class="tl"><strong>'+r.day.slice(5)+'</strong>'+(isToday?'<span class="tbadge">TODAY</span>':'')+'</td>'+
-                '<td>'+n(r.ordTot)+'</td>'+
-                '<td><span class="b bg">'+n(r.ordDel)+'</span></td>'+
-                '<td>'+(r.ordTot-r.ordDel>0?'<span class="b bo">'+n(r.ordTot-r.ordDel)+'</span>':'—')+'</td>'+
-                '<td>'+pb(oP)+'</td>'+
-                '<td>'+(br>0?'<span class="b br">'+n(br)+'</span>':'—')+'</td>'+
+        document.getElementById('drillBody').innerHTML=days.map(function(r){
+            var isToday=r.period===today;
+            return '<tr'+(isToday?' class="tday"':'')+'>'+
+                '<td class="tl"><strong>'+r.period+'</strong>'+(isToday?'<span class="tbadge">TODAY</span>':'')+'</td>'+
+                '<td>'+n(r.appts)+'</td>'+
+                '<td><span class="b bg">'+n(r.delivered)+'</span></td>'+
+                '<td>'+(r.in_progress>0?'<span class="b bo">'+n(r.in_progress)+'</span>':'—')+'</td>'+
+                '<td>'+pb(pct(r.on_target,r.delivered))+'</td>'+
+                '<td>'+(r.breach>0?'<span class="b br">'+n(r.breach)+'</span>':'—')+'</td>'+
+                '<td>'+(r.lt_breach>0?'<span class="b ba">'+n(r.lt_breach)+'</span>':'—')+'</td>'+
+                '<td>'+(r.ftr_breach>0?'<span class="b ba">'+n(r.ftr_breach)+'</span>':'—')+'</td>'+
                 '<td>'+(r.returns>0?'<span class="b br">'+n(r.returns)+'</span>':'—')+'</td>'+
                 '<td>'+(r.revisions>0?'<span class="b bp">'+n(r.revisions)+'</span>':'—')+'</td>'+
-                '<td>'+n(r.prodTot)+'</td>'+
-                '<td>'+pb(pP)+'</td>'+
-                '<td>'+(r.lt>0?'<span class="b ba">'+n(r.lt)+'</span>':'—')+'</td>'+
-                '<td>'+(r.ftr>0?'<span class="b ba">'+n(r.ftr)+'</span>':'—')+'</td>'+
                 '</tr>';
         }).join('');
-        document.getElementById('dailyFoot').innerHTML='<tr class="tfoot">'+
-            '<td class="tl">MTD total</td><td>'+n(tO)+'</td><td>'+n(tD)+'</td><td>'+n(tO-tD)+'</td>'+
-            '<td>'+pb(pct(tOn,tD))+'</td><td>'+n(Math.max(0,tD-tOn-tRev))+'</td>'+
-            '<td>'+n(tRet)+'</td><td>'+n(tRev)+'</td>'+
-            '<td>'+n(tP)+'</td><td>'+pb(pct(tPOn,tPD))+'</td>'+
-            '<td>'+n(tLt)+'</td><td>'+n(tFtr)+'</td>'+
-            '</tr>';
+        document.getElementById('drillPanel').classList.add('open');
+        document.getElementById('drillPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+    function closeDrill(){
+        selectedPeriod=null;
+        document.getElementById('drillPanel').classList.remove('open');
     }
 
-    // ─── PRODUCTS ────────────────────────────────────────────────────────────────
+    // ─── PRODUCTS ─────────────────────────────────────────────────────────────────
     function renderProducts(){
-        var rows=filterProds(PRODUCTS_RAW);
-        var tOT=0,tOD=0,tOOn=0,tRet=0,tRev=0,tP=0,tPD=0,tPOn=0,tLt=0,tFtr=0,tBoth=0;
+        var rows=filterProds(DATA.products||[]);
+        var tA=0,tD=0,tP=0,tOn=0,tBr=0,tLt=0,tFtr=0,tRet=0,tRev=0;
         document.getElementById('productBody').innerHTML=rows.map(function(p){
             var slaH=getSla(p.key);
-            var oP=pct(p.ordOn,p.ordDel||p.ordTot||1);
-            var pP=pct(p.prodOn,p.prodDel||p.prodTot||1);
-            var inPct=Math.round((p.prodOn||0)/Math.max(p.prodDel||p.prodTot||1,1)*100);
-            var br=Math.max(0,(p.ordDel||p.ordTot||0)-(p.ordOn||0)-(p.revisions||0));
-            tOT+=p.ordTot||0;tOD+=p.ordDel||p.ordTot||0;tOOn+=p.ordOn||0;
-            tRet+=p.returns||0;tRev+=p.ftr||0;
-            tP+=p.prodTot||0;tPD+=p.prodDel||p.prodTot||0;tPOn+=p.prodOn||0;
-            tLt+=p.lt||0;tFtr+=p.ftr||0;tBoth+=p.both||0;
+            var oP=pct(p.on_target,p.delivered);
+            var inPct=Math.round((p.on_target||0)/Math.max(p.delivered||1,1)*100);
+            tA+=p.appts||0;tD+=p.delivered||0;tP+=p.in_progress||0;
+            tOn+=p.on_target||0;tBr+=p.breach||0;tLt+=p.lt_breach||0;
+            tFtr+=p.ftr_breach||0;tRet+=p.returns||0;tRev+=p.revisions||0;
             return '<tr>'+
                 '<td class="tl" style="font-weight:500">'+p.key+'</td>'+
                 '<td style="text-align:center">'+slaH+'h</td>'+
-                '<td style="border-left:2px solid var(--zborder)">'+n(p.ordTot)+'</td>'+
-                '<td><span class="b bg">'+n(p.ordDel||p.ordTot)+'</span></td>'+
-                '<td>'+((p.ordTot-(p.ordDel||p.ordTot))>0?'<span class="b bo">'+n(p.ordTot-(p.ordDel||p.ordTot))+'</span>':'—')+'</td>'+
+                '<td style="border-left:2px solid var(--zbd)">'+n(p.appts)+'</td>'+
+                '<td><span class="b bg">'+n(p.delivered)+'</span></td>'+
+                '<td>'+(p.in_progress>0?'<span class="b bo">'+n(p.in_progress)+'</span>':'—')+'</td>'+
+                '<td><span class="b bg">'+n(p.on_target)+'</span></td>'+
                 '<td>'+pb(oP)+'</td>'+
-                '<td>'+(br>0?'<span class="b br">'+n(br)+'</span>':'—')+'</td>'+
-                '<td class="col-sep"></td>'+
-                '<td>'+n(p.prodTot)+'</td>'+
-                '<td>'+pb(pP)+'</td>'+
-                '<td>'+(p.lt?'<span class="b ba">'+n(p.lt)+'</span>':'—')+'</td>'+
+                '<td>'+(p.breach>0?'<span class="b br">'+n(p.breach)+'</span>':'—')+'</td>'+
+                '<td class="csep"></td>'+
+                '<td>'+(p.lt_breach?'<span class="b ba">'+n(p.lt_breach)+'</span>':'—')+'</td>'+
+                '<td>'+(p.ftr_breach?'<span class="b br">'+n(p.ftr_breach)+'</span>':'—')+'</td>'+
                 '<td>'+(p.returns?'<span class="b br">'+n(p.returns)+'</span>':'—')+'</td>'+
-                '<td>'+(p.ftr?'<span class="b bp">'+n(p.ftr)+'</span>':'—')+'</td>'+
-                '<td>'+(p.both?'<span class="b br">'+n(p.both)+'</span>':'—')+'</td>'+
-                '<td><div class="scell"><div class="sbar"><div class="sin" style="width:'+inPct+'%"></div><div class="sout" style="width:'+(100-inPct)+'%"></div></div></div></td>'+
+                '<td>'+(p.revisions?'<span class="b bp">'+n(p.revisions)+'</span>':'—')+'</td>'+
+                '<td><div class="scell" style="display:flex;align-items:center;gap:6px;justify-content:flex-end"><div class="sbar"><div class="sin" style="width:'+inPct+'%"></div><div class="sout" style="width:'+(100-inPct)+'%"></div></div></div></td>'+
                 '</tr>';
         }).join('');
         document.getElementById('productFoot').innerHTML='<tr class="tfoot">'+
             '<td class="tl">Total</td><td>—</td>'+
-            '<td>'+n(tOT)+'</td><td>'+n(tOD)+'</td><td>'+n(tOT-tOD)+'</td>'+
-            '<td>'+pb(pct(tOOn,tOD))+'</td><td>'+n(Math.max(0,tOD-tOOn-tRev))+'</td>'+
-            '<td class="col-sep"></td>'+
-            '<td>'+n(tP)+'</td><td>'+pb(pct(tPOn,tPD))+'</td>'+
-            '<td>'+n(tLt)+'</td><td>'+n(tRet)+'</td><td>'+n(tFtr)+'</td><td>'+n(tBoth)+'</td><td></td>'+
+            '<td>'+n(tA)+'</td>'+
+            '<td>'+n(tD)+'</td>'+
+            '<td>'+n(tP)+'</td>'+
+            '<td>'+n(tOn)+'</td>'+
+            '<td>'+pb(pct(tOn,tD))+'</td>'+
+            '<td>'+n(tBr)+'</td>'+
+            '<td class="csep"></td>'+
+            '<td>'+n(tLt)+'</td><td>'+n(tFtr)+'</td><td>'+n(tRet)+'</td><td>'+n(tRev)+'</td><td></td>'+
             '</tr>';
     }
 
     // ─── ORDER DETAIL ─────────────────────────────────────────────────────────────
-    var PROD_KEYS=[['photo','Photography'],['floor','Floorplanner'],['meas','Measurement'],
-        ['cad','CAD Report'],['vid','Video'],['soc','Social media video'],
-        ['reel','Social Media Reel'],['tour','360 tour'],['drone','Drone photography'],
-        ['mat','Matterport'],['kuula','KuulaTour'],['dvid','Drone video'],
-        ['art','Artist impression'],['eve','Evening impression'],['wofl','WOFL']];
-
     function renderOrders(filter){
-        var rows=filterLand(ORDERS_RAW);
-        if(filter) rows=rows.filter(function(r){return String(r.id).includes(filter);});
+        var rows=filterLand(DATA.orders||[]);
+        if(filter)rows=rows.filter(function(r){return String(r.id).includes(filter);});
         document.getElementById('orderBody').innerHTML=rows.map(function(o){
             var prods=PROD_KEYS.map(function(pk){return o[pk[0]];}).filter(Boolean);
             var allOk=prods.every(function(p){return p.ok;});
             var hasRet=prods.some(function(p){return p.status==='return';});
-            var hasRev=prods.some(function(p){return p.status==='ftr'||p.status==='revision';});
+            var hasRev=prods.some(function(p){return p.status==='revision';});
             var sBadge=allOk?'<span class="b bg">On target</span>':
                 hasRet?'<span class="b br">Return</span>':
-                    hasRev?'<span class="b bp">FTR breach</span>':
+                    hasRev?'<span class="b bp">Revisie</span>':
                         '<span class="b br">Breach</span>';
             var cells=PROD_KEYS.map(function(pk){
                 var v=o[pk[0]];
-                if(!v) return '<td style="text-align:center;color:#ccc">—</td>';
-                return '<td class="'+statusCls(v.status)+'" style="text-align:center">'+
+                if(!v)return '<td style="text-align:center;color:#ccc">—</td>';
+                var bgcls={ok:'',lt:'co',ftr:'cr',both:'cr',revision:'cp'}[v.status]||'';
+                return '<td class="'+bgcls+'" style="text-align:center">'+
                     '<a class="plink" href="https://zone.zibber.nl/production/'+v.id+'" target="_blank">'+v.id+'</a>'+
-                    '<div style="font-size:10px;color:var(--zm)">'+statusBadge(v.status)+'</div>'+
-                    (v.del>1?'<div style="font-size:9px;color:var(--zm)">'+v.del+' deliveries</div>':'')+'</td>';
+                    '<div style="font-size:10px;color:var(--zm)">'+statusCell(v.status)+'</div>'+
+                    (v.deliveries>1?'<div style="font-size:9px;color:var(--zm)">'+v.deliveries+'x</div>':'')+
+                    '</td>';
             }).join('');
             return '<tr>'+
                 '<td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/'+o.id+'" target="_blank">'+o.id+'</a></td>'+
                 '<td class="tl"><span class="b bb">'+(o.country||'?')+'</span></td>'+
+                '<td class="tl" style="font-size:11px;color:var(--zm)">'+(o.order_date||'—')+'</td>'+
+                '<td class="tl" style="font-size:11px;color:var(--zm)">'+(o.appt_date||'—')+'</td>'+
                 '<td class="tl">'+sBadge+'</td>'+
-                '<td class="tl"><div class="elinks">'+
-                '<a class="elink" href="https://zone.zibber.nl/orders/'+o.id+'" target="_blank">Zone</a>'+
-                '<a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~'+o.id+'" target="_blank">JOI</a>'+
-                '<a class="elink" href="https://stream.bright-river.com/all/find/'+o.id+'" target="_blank">STREAM</a>'+
-                '</div></td>'+cells+
+                cells+
+                '<td class="tl">'+links(o.id)+'</td>'+
                 '</tr>';
         }).join('');
     }
 
-    // ─── BREACH TABLE ─────────────────────────────────────────────────────────────
+    // ─── BREACH ──────────────────────────────────────────────────────────────────
     function renderBreach(filter){
-        var rows=filterLand(BREACH_RAW);
-        if(filter) rows=rows.filter(function(r){
-            return String(r.id).includes(filter)||r.prod.toLowerCase().includes(filter.toLowerCase());
+        var rows=filterLand(DATA.breach||[]);
+        if(filter)rows=rows.filter(function(r){
+            return String(r.id).includes(filter)||(r.prod||'').toLowerCase().includes(filter.toLowerCase());
         });
-        document.getElementById('breachBody').innerHTML=rows.map(function(o){
-            var slaH=getSla(o.prod);
-            var lt=parseFloat(o.lt_display||o.lt||0);
-            var ltOver=lt>slaH;
-            return '<tr>'+
-                '<td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/'+o.id+'" target="_blank">'+o.id+'</a></td>'+
-                '<td style="text-align:center"><span class="b bb">'+(o.country||'?')+'</span></td>'+
-                '<td>'+o.prod+'</td>'+
-                '<td style="text-align:center">'+(o.created||'—')+'</td>'+
-                '<td style="text-align:center">'+(o.upload||'—')+'</td>'+
-                '<td style="text-align:center">'+(o.deadline||'—')+'</td>'+
-                '<td style="text-align:center;font-weight:600;color:'+(ltOver?'var(--zr)':'var(--zt)')+'">'+
-                (o.lt_display||o.lt||'—')+'</td>'+
-                '<td style="text-align:center">'+slaH+'h</td>'+
-                '<td style="text-align:center">'+(o.deliveries||o.rev||0)+'</td>'+
-                '<td style="text-align:center">'+breachLabel(o.reason)+'</td>'+
-                '<td><span class="rtag" title="'+(o.return_reason||o.rev_notes||'')+'">'+(o.return_reason||o.rev_notes||'—')+'</span></td>'+
-                '<td class="tl"><div class="elinks">'+
-                '<a class="elink" href="https://zone.zibber.nl/orders/'+o.id+'" target="_blank">Zone</a>'+
-                '<a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~'+o.id+'" target="_blank">JOI</a>'+
-                '</div></td>'+
-                '</tr>';
-        }).join('');
-    }
-
-
-    function buildReturnPie(){
-        var counts={};
-        RETURNS_RAW.forEach(function(r){var k=r.return_reason||'Unknown';counts[k]=(counts[k]||0)+1;});
-        var labels=Object.keys(counts),vals=Object.values(counts);
-        var colors=['#E24B4A','#EF9F27','#1F80F0','#2FC974','#8B5CF6','#F59E0B'];
-        if(charts.retPie)charts.retPie.destroy();
-        charts.retPie=new Chart(document.getElementById('returnPie'),{type:'doughnut',
-            data:{labels:labels.length?labels:['Geen return data'],datasets:[{data:vals.length?vals:[1],backgroundColor:vals.length?colors.slice(0,labels.length):['#E2E8F0'],borderWidth:2,borderColor:'#fff'}]},
-            options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:6}}}}
-        });
-    }
-
-    function buildRevisionPie(){
-        var counts={};
-        REVISIONS_RAW.forEach(function(r){var k=r.prod||'Unknown';counts[k]=(counts[k]||0)+1;});
-        var labels=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
-        var vals=labels.map(function(l){return counts[l];});
-        var colors=['#8B5CF6','#A78BFA','#1F80F0','#2FC974','#EF9F27','#E24B4A','#10B981','#F59E0B'];
-        if(charts.revPie)charts.revPie.destroy();
-        charts.revPie=new Chart(document.getElementById('revisionPie'),{type:'doughnut',
-            data:{labels:labels.length?labels:['Geen data'],datasets:[{data:vals.length?vals:[1],backgroundColor:vals.length?colors.slice(0,labels.length):['#E2E8F0'],borderWidth:2,borderColor:'#fff'}]},
-            options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:6}},tooltip:{callbacks:{label:function(c){return c.label+': '+c.parsed+' re-deliveries';}}}}}
-        });
-    }
-
-    function buildRetRevByProd(){
-        var prods=filterProds(PRODUCTS_RAW).filter(function(p){return (p.returns||0)>0||(p.ftr||0)>0;});
-        if(charts.rrProd)charts.rrProd.destroy();
-        charts.rrProd=new Chart(document.getElementById('retRevByProd'),{type:'bar',
-            data:{labels:prods.map(function(p){return p.key.substring(0,12);}),datasets:[
-                    {label:'Returns',data:prods.map(function(p){return p.returns||0;}),backgroundColor:'rgba(226,75,74,.8)',borderRadius:3,borderSkipped:false},
-                    {label:'FTR breach',data:prods.map(function(p){return p.ftr||0;}),backgroundColor:'rgba(139,92,246,.7)',borderRadius:3,borderSkipped:false},
-                ]},
-            options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,padding:8}}},
-                scales:{x:{ticks:{font:{size:10},color:'#888'},grid:{display:false}},y:{ticks:{font:{size:10},color:'#888'},grid:{color:'rgba(0,0,0,.05)'}}}}
-        });
-    }
-
-    function renderReturns(){
-        if(!RETURNS_RAW.length){
-            document.getElementById('returnsBody').innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--zm);font-size:12px">Geen return data — voeg <strong>return_appointment</strong> en <strong>return_appointment_notes</strong> toe aan Query A</td></tr>';
-            return;
-        }
-        document.getElementById('returnsBody').innerHTML=RETURNS_RAW.map(function(r){
+        document.getElementById('breachBody').innerHTML=rows.map(function(r){
+            var slaH=getSla(r.prod);
+            var ltH=r.turnaround_h||0;
+            var over=ltH>slaH;
             return '<tr>'+
                 '<td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">'+r.id+'</a></td>'+
                 '<td style="text-align:center"><span class="b bb">'+(r.country||'?')+'</span></td>'+
                 '<td>'+(r.prod||'—')+'</td>'+
                 '<td style="text-align:center">'+(r.appt_date||'—')+'</td>'+
-                '<td style="text-align:center"><span class="b br">'+(r.return_reason||'—')+'</span></td>'+
-                '<td><span class="rtag" title="'+(r.appt_notes||'')+'">'+(r.appt_notes||'—')+'</span></td>'+
-                '<td style="text-align:center;font-weight:600;color:var(--zr)">'+(r.lt||'—')+'</td>'+
-                '<td style="text-align:center">'+(r.sla_ok?'<span class="b bg">On target</span>':'<span class="b br">Breach</span>')+'</td>'+
-                '<td class="tl"><div class="elinks"><a class="elink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">Zone</a><a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~'+r.id+'" target="_blank">JOI</a></div></td>'+
+                '<td style="text-align:center">'+(r.first_upload||'—')+'</td>'+
+                '<td style="text-align:center">'+(r.deadline||'—')+'</td>'+
+                '<td style="text-align:center;font-weight:600;color:'+(over?'var(--zr)':'var(--zt)')+'">'+
+                (ltH?Math.round(ltH)+'h':'—')+'</td>'+
+                '<td style="text-align:center">'+slaH+'h</td>'+
+                '<td style="text-align:center">'+(r.deliveries||1)+'</td>'+
+                '<td style="text-align:center">'+breachBadge(r.reason)+'</td>'+
+                '<td><span class="rtag" title="'+(r.return_reason||'')+'">'+(r.return_reason||'—')+'</span></td>'+
+                '<td class="tl">'+links(r.id)+'</td>'+
                 '</tr>';
         }).join('');
     }
 
-    function renderRevisions(){
-        if(!REVISIONS_RAW.length){
-            document.getElementById('revisionsBody').innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--zm)">Geen data</td></tr>';
-            return;
-        }
-        document.getElementById('revisionsBody').innerHTML=REVISIONS_RAW.map(function(r){
-            var ltBadge=r.lt_ok?'<span class="b bg">LT ok</span>':'<span class="b br">LT breach</span>';
-            var days=r.turnaround_days!==null&&r.turnaround_days!==undefined?r.turnaround_days+'d':'—';
+    // ─── RETURNS & REVISIES ───────────────────────────────────────────────────────
+    function buildReturnPie(){
+        var counts={};
+        filterLand(DATA.returns||[]).forEach(function(r){
+            var k=r.return_reason||'Onbekend';counts[k]=(counts[k]||0)+1;
+        });
+        var labels=Object.keys(counts),vals=Object.values(counts);
+        var colors=['#E24B4A','#EF9F27','#1F80F0','#2FC974','#8B5CF6','#F59E0B','#EC4899'];
+        if(charts.retPie)charts.retPie.destroy();
+        charts.retPie=new Chart(document.getElementById('returnPie'),{type:'doughnut',
+            data:{labels:labels.length?labels:['No return data'],
+                datasets:[{data:vals.length?vals:[1],backgroundColor:vals.length?colors.slice(0,labels.length):['#E2E8F0'],borderWidth:2,borderColor:'#fff'}]},
+            options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+                plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:6}},
+                    tooltip:{callbacks:{label:function(c){return c.label+': '+c.parsed;}}}}}
+        });
+    }
+    function buildRevPie(){
+        var counts={};
+        filterLand(DATA.revisions||[]).forEach(function(r){
+            var k=r.prod||'Onbekend';counts[k]=(counts[k]||0)+1;
+        });
+        var labels=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
+        var vals=labels.map(function(l){return counts[l];});
+        var colors=['#8B5CF6','#A78BFA','#1F80F0','#2FC974','#EF9F27','#E24B4A','#10B981','#F59E0B'];
+        if(charts.revPie)charts.revPie.destroy();
+        charts.revPie=new Chart(document.getElementById('revPie'),{type:'doughnut',
+            data:{labels:labels.length?labels:['No data'],
+                datasets:[{data:vals.length?vals:[1],backgroundColor:vals.length?colors.slice(0,labels.length):['#E2E8F0'],borderWidth:2,borderColor:'#fff'}]},
+            options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+                plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:6}},
+                    tooltip:{callbacks:{label:function(c){return c.label+': '+c.parsed+' revisions';}}}}}
+        });
+    }
+    function buildRetRevBar(){
+        var prods=filterProds(DATA.products||[]).filter(function(p){return (p.returns||0)>0||(p.revisions||0)>0;});
+        if(charts.rrBar)charts.rrBar.destroy();
+        charts.rrBar=new Chart(document.getElementById('retRevBar'),{type:'bar',
+            data:{labels:prods.map(function(p){return p.key.substring(0,12);}),datasets:[
+                    {label:'Returns (Zibber)',data:prods.map(function(p){return p.returns||0;}),backgroundColor:'rgba(226,75,74,.8)',borderRadius:3,borderSkipped:false},
+                    {label:'Revisions (client)',data:prods.map(function(p){return p.revisions||0;}),backgroundColor:'rgba(139,92,246,.7)',borderRadius:3,borderSkipped:false},
+                ]},
+            options:{responsive:true,maintainAspectRatio:false,
+                plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,padding:8}}},
+                scales:{x:{ticks:{font:{size:10},color:'#888'},grid:{display:false}},y:{ticks:{font:{size:10},color:'#888'},grid:{color:'rgba(0,0,0,.05)'}}}}
+        });
+    }
+    function renderReturns(){
+        var rows=filterLand(DATA.returns||[]);
+        document.getElementById('returnsBody').innerHTML=rows.length?rows.map(function(r){
             return '<tr>'+
                 '<td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">'+r.id+'</a></td>'+
                 '<td style="text-align:center"><span class="b bb">'+(r.country||'?')+'</span></td>'+
                 '<td>'+(r.prod||'—')+'</td>'+
-                '<td style="text-align:center">'+(r.order_created||'—')+'</td>'+
-                '<td style="text-align:center">'+(r.first_upload||'—')+'</td>'+
-                '<td style="text-align:center">'+(r.deadline||'—')+'</td>'+
-                '<td style="text-align:center;font-weight:600">'+days+'</td>'+
-                '<td style="text-align:center;font-weight:600">'+r.deliveries+'</td>'+
-                '<td style="text-align:center">'+ltBadge+'</td>'+
-                '<td class="tl"><div class="elinks"><a class="elink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">Zone</a><a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~'+r.id+'" target="_blank">JOI</a></div></td>'+
+                '<td style="text-align:center">'+(r.return_date||'—')+'</td>'+
+                '<td style="text-align:center"><span class="b br">'+(r.return_reason||'—')+'</span></td>'+
+                '<td><span class="rtag" title="'+(r.appt_notes||'')+'">'+(r.appt_notes||'—')+'</span></td>'+
+                '<td style="text-align:center">'+(r.upload||'—')+'</td>'+
+                '<td style="text-align:center">'+(r.sla_ok?'<span class="b bg">On target</span>':'<span class="b br">Breach</span>')+'</td>'+
+                '<td class="tl">'+links(r.id)+'</td>'+
                 '</tr>';
-        }).join('');
+        }).join(''):'<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--zm);font-size:12px">Geen return data — <code>return_appointment = 1</code> in appointments</td></tr>';
+    }
+    function renderRevisions(){
+        var rows=filterLand(DATA.revisions||[]);
+        document.getElementById('revisionsBody').innerHTML=rows.length?rows.map(function(r){
+            return '<tr>'+
+                '<td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">'+r.id+'</a></td>'+
+                '<td style="text-align:center"><span class="b bb">'+(r.country||'?')+'</span></td>'+
+                '<td>'+(r.prod||'—')+'</td>'+
+                '<td style="text-align:center">'+(r.rev_date||'—')+'</td>'+
+                '<td class="tl"><span class="rtag" title="'+(r.notes||'')+'">'+(r.notes||'—')+'</span></td>'+
+                '<td style="text-align:center">'+(r.expected_at||'—')+'</td>'+
+                '<td style="text-align:center"><span class="b '+(r.status==='completed'?'bg':'bo')+'">'+( r.status||'—')+'</span></td>'+
+                '<td class="tl">'+links(r.id)+'</td>'+
+                '</tr>';
+        }).join(''):'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--zm)">Geen revisie data</td></tr>';
     }
 
     // ─── PERFORMANCE ─────────────────────────────────────────────────────────────
     function renderPerf(){
         var t=CFG.target;
-        document.getElementById('targetLabel').textContent=t+'%';
-        var rows=filterProds(PRODUCTS_RAW);
-        var oPs=rows.map(function(p){return pct(p.ordOn,p.ordDel||p.ordTot||1);});
-        var pPs=rows.map(function(p){return pct(p.prodOn,p.prodDel||p.prodTot||1);});
+        document.getElementById('targetLbl').textContent=t+'%';
+        var rows=filterProds(DATA.products||[]);
+        var ltPs=rows.map(function(p){return pct((p.delivered||0)-(p.lt_breach||0),p.delivered||1);});
+        var ftrPs=rows.map(function(p){return pct((p.delivered||0)-(p.ftr_breach||0),p.delivered||1);});
         if(charts.perf)charts.perf.destroy();
         charts.perf=new Chart(document.getElementById('perfChart'),{type:'bar',
             data:{labels:rows.map(function(p){return p.key.substring(0,12);}),datasets:[
-                    {label:'Orders on target %',data:oPs,backgroundColor:oPs.map(function(v){return v>=t?'rgba(31,128,240,.8)':v>=(t-10)?'rgba(239,159,39,.8)':'rgba(226,75,74,.8)';}),borderRadius:4,borderSkipped:false},
-                    {label:'Prod on target %',  data:pPs,backgroundColor:pPs.map(function(v){return v>=t?'rgba(47,201,116,.7)':v>=(t-10)?'rgba(239,159,39,.5)':'rgba(226,75,74,.5)';}),borderRadius:4,borderSkipped:false},
+                    {label:'LT on target %',data:ltPs,backgroundColor:ltPs.map(function(v){return v>=t?'rgba(31,128,240,.8)':v>=(t-10)?'rgba(239,159,39,.8)':'rgba(226,75,74,.8)';}),borderRadius:4,borderSkipped:false},
+                    {label:'FTR on target %',data:ftrPs,backgroundColor:ftrPs.map(function(v){return v>=t?'rgba(47,201,116,.7)':v>=(t-10)?'rgba(239,159,39,.5)':'rgba(226,75,74,.5)';}),borderRadius:4,borderSkipped:false},
                 ]},
             options:{responsive:true,maintainAspectRatio:false,
                 plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y.toFixed(1)+'%';}}}},
@@ -1217,80 +1181,135 @@
             }
         });
         document.getElementById('perfGrid').innerHTML=rows.map(function(p){
-            var oP=pct(p.ordOn,p.ordDel||p.ordTot||1),pP=pct(p.prodOn,p.prodDel||p.prodTot||1);
-            var cls=pP>=t?'ok':pP>=(t-10)?'warn':'fail';
-            var barC=pP>=t?'var(--zg)':pP>=(t-10)?'var(--za)':'var(--zr)';
+            var oP=pct(p.on_target,p.delivered);
+            var ltP=pct((p.delivered||0)-(p.lt_breach||0),p.delivered||1);
+            var ftrP=pct((p.delivered||0)-(p.ftr_breach||0),p.delivered||1);
+            var cls=oP>=t?'ok':oP>=(t-10)?'warn':'fail';
+            var barC=oP>=t?'var(--zg)':oP>=(t-10)?'var(--za)':'var(--zr)';
             return '<div class="pcard '+cls+'">'+
-                '<div class="pcard-name">'+p.key+' <span class="b '+(pP>=t?'bg':pP>=(t-10)?'ba':'br')+'">'+pP.toFixed(1)+'%</span></div>'+
+                '<div class="pcard-name">'+p.key+' <span class="b '+(oP>=t?'bg':oP>=(t-10)?'ba':'br')+'">'+oP.toFixed(1)+'%</span></div>'+
                 '<div class="pstats">'+
-                '<div class="pst"><div class="pst-lbl">Orders</div><div class="pst-val">'+n(p.ordTot)+'</div></div>'+
-                '<div class="pst"><div class="pst-lbl">On target</div><div class="pst-val '+(oP>=t?'ok':'fail')+'">'+n(p.ordOn)+' ('+oP.toFixed(0)+'%)</div></div>'+
-                '<div class="pst"><div class="pst-lbl">Returns</div><div class="pst-val '+(p.returns>0?'fail':'ok')+'">'+n(p.returns||0)+'</div></div>'+
-                '<div class="pst"><div class="pst-lbl">FTR breach</div><div class="pst-val" style="color:var(--zp)">'+n(p.ftr||0)+'</div></div>'+
+                '<div class="pst"><div class="pst-lbl">Appointments</div><div class="pst-val">'+n(p.appts)+'</div></div>'+
+                '<div class="pst"><div class="pst-lbl">On target</div><div class="pst-val '+(oP>=t?'ok':'fail')+'">'+n(p.on_target)+' ('+oP.toFixed(0)+'%)</div></div>'+
+                '<div class="pst"><div class="pst-lbl">LT ok</div><div class="pst-val '+(ltP>=t?'ok':'fail')+'">'+ltP.toFixed(1)+'%</div></div>'+
+                '<div class="pst"><div class="pst-lbl">FTR ok</div><div class="pst-val '+(ftrP>=t?'ok':'fail')+'">'+ftrP.toFixed(1)+'%</div></div>'+
                 '</div>'+
                 '<div class="pbar-wrap">'+
-                '<div class="pbar-labels"><span>Productions on target</span><span>'+t+'% target</span></div>'+
-                '<div class="pbar"><div class="pbar-fill" style="width:'+Math.min(pP,100)+'%;background:'+barC+'"></div><div class="pbar-target" style="left:'+Math.min(t,100)+'%"></div></div>'+
-                '<div class="pbar-note" style="color:'+(pP>=t?'#1a6b35':'var(--zr)')+'">'+( pP>=t?'✓ On target':'✗ '+Math.abs(pP-t).toFixed(1)+'% below target')+'</div>'+
+                '<div class="pbar-lbl"><span>On target</span><span>'+t+'% target</span></div>'+
+                '<div class="pbar"><div class="pbar-fill" style="width:'+Math.min(oP,100)+'%;background:'+barC+'"></div><div class="pbar-tgt" style="left:'+Math.min(t,100)+'%"></div></div>'+
+                '<div class="pbar-note" style="color:'+(oP>=t?'#1a6b35':'var(--zr)')+'">'+( oP>=t?'✓ On target':'✗ '+Math.abs(oP-t).toFixed(1)+'% below target')+'</div>'+
                 '</div>'+
                 '</div>';
         }).join('');
         document.getElementById('perfBody').innerHTML=rows.map(function(p){
-            var oP=pct(p.ordOn,p.ordDel||p.ordTot||1),pP=pct(p.prodOn,p.prodDel||p.prodTot||1);
+            var oP=pct(p.on_target,p.delivered);
+            var ltP=pct((p.delivered||0)-(p.lt_breach||0),p.delivered||1);
+            var ftrP=pct((p.delivered||0)-(p.ftr_breach||0),p.delivered||1);
             return '<tr>'+
                 '<td class="tl" style="font-weight:500">'+p.key+'</td>'+
                 '<td style="text-align:center">'+t+'%</td>'+
-                '<td style="border-left:2px solid var(--zborder)">'+n(p.ordTot)+'</td>'+
-                '<td><span class="b bg">'+n(p.ordOn)+'</span></td>'+
+                '<td style="border-left:2px solid var(--zbd)">'+n(p.appts)+'</td>'+
+                '<td><span class="b bg">'+n(p.on_target)+'</span></td>'+
                 '<td>'+pb(oP)+'</td>'+
-                '<td class="col-sep"></td>'+
-                '<td>'+n(p.prodTot)+'</td>'+
-                '<td>'+pb(pP)+'</td>'+
+                '<td>'+vsDelta(oP)+'</td>'+
+                '<td class="csep"></td>'+
+                '<td>'+(p.lt_breach?'<span class="b ba">'+n(p.lt_breach)+'</span>':'—')+'</td>'+
+                '<td>'+(p.ftr_breach?'<span class="b br">'+n(p.ftr_breach)+'</span>':'—')+'</td>'+
                 '<td>'+(p.returns?'<span class="b br">'+n(p.returns)+'</span>':'—')+'</td>'+
-                '<td>'+(p.ftr?'<span class="b bp">'+n(p.ftr)+'</span>':'—')+'</td>'+
-                '<td>'+vsDelta(pP)+'</td>'+
+                '<td>'+(p.revisions?'<span class="b bp">'+n(p.revisions)+'</span>':'—')+'</td>'+
                 '</tr>';
         }).join('');
     }
 
+    // ─── CHIPS ───────────────────────────────────────────────────────────────────
+    function buildChips(){
+        var inData=PROD_CFG.map(function(p){return p.key;});
+        if(DATA.products&&DATA.products.length){
+            var dataKeys=new Set(DATA.products.map(function(p){return p.key;}));
+            inData=PROD_CFG.map(function(p){return p.key;}).filter(function(k){return dataKeys.has(k);});
+            DATA.products.forEach(function(p){if(!PROD_CFG.find(function(c){return c.key===p.key;}))inData.push(p.key);});
+        }
+        activeProds=new Set(inData);
+        document.getElementById('prodChips').innerHTML=inData.map(function(k){
+            return '<span class="chip active" onclick="toggleChip(this,\''+k.replace(/'/g,"\\'")+'\')">'+ k+'</span>';
+        }).join('');
+    }
+    function toggleChip(el,key){
+        el.classList.toggle('active');
+        if(activeProds.has(key))activeProds.delete(key);else activeProds.add(key);
+        renderAll();
+    }
+
+    // ─── CONTROLS ────────────────────────────────────────────────────────────────
+    function setLand(btn,v){
+        document.querySelectorAll('#landBtns .tbtn').forEach(function(b){b.classList.remove('active');});
+        btn.classList.add('active');activeLand=v;renderAll();
+    }
+    function setPeriod(p){
+        activePeriod=p;
+        document.getElementById('periodDay').classList.toggle('active',p==='day');
+        document.getElementById('periodWeek').classList.toggle('active',p==='week');
+        closeDrill();
+        buildMainChart();
+        renderOverview();
+    }
+    function onOrderSearch(v){
+        switchTab('orders');
+        renderOrders(v);
+    }
+    function switchTab(t){
+        document.querySelectorAll('.tab').forEach(function(el,i){
+            el.classList.toggle('active',['overview','products','orders','breach','returns','perf'][i]===t);
+        });
+        document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+        var tgt=document.getElementById('panel-'+t);
+        if(tgt)tgt.classList.add('active');
+    }
+
+    // ─── SETTINGS ────────────────────────────────────────────────────────────────
+    function buildSettingsRows(){
+        document.getElementById('cfgTarget').value=CFG.target;
+        document.getElementById('settingsRows').innerHTML=PROD_CFG.map(function(p){
+            return '<div class="sp-row"><span class="sp-name">'+p.key+'</span>'+
+                '<div style="display:flex;align-items:center;gap:5px">'+
+                '<input class="sp-inp" type="number" id="sla_'+p.key.replace(/[\s.]/g,'_')+'" value="'+(CFG.sla[p.key]||p.sla)+'" min="1" max="240">'+
+                '<span style="font-size:11px;color:var(--zm)">u</span>'+
+                '</div></div>';
+        }).join('');
+    }
+    function openSettings(){buildSettingsRows();document.getElementById('settingsOverlay').classList.add('open');}
+    function closeSettings(){document.getElementById('settingsOverlay').classList.remove('open');}
+    function saveSettings(){
+        CFG.target=parseInt(document.getElementById('cfgTarget').value)||95;
+        PROD_CFG.forEach(function(p){
+            var el=document.getElementById('sla_'+p.key.replace(/[\s.]/g,'_'));
+            if(el)CFG.sla[p.key]=parseInt(el.value)||p.sla;
+        });
+        localStorage.setItem('zbV8Cfg',JSON.stringify(CFG));
+        closeSettings();renderAll();
+    }
+
     // ─── RENDER ALL ───────────────────────────────────────────────────────────────
-    async function renderAll(){
-        await loadData();
-        buildChips();
+    function renderAll(){
         renderKPI();
         buildMainChart();
-        buildBreachDonut();
-        renderWoW();
-        renderDaily();
+        buildDonut();
+        renderOverview();
         renderProducts();
         renderOrders();
         renderBreach();
         buildReturnPie();
-        buildRevisionPie();
-        buildRetRevByProd();
+        buildRevPie();
+        buildRetRevBar();
         renderReturns();
         renderRevisions();
         renderPerf();
     }
 
     // ─── INIT ────────────────────────────────────────────────────────────────────
-    document.getElementById('mtdBadge').textContent   = MTD_MONTH+' MTD';
-    document.getElementById('monthLabel').textContent  = MTD_MONTH+' '+MTD_YEAR;
-    document.getElementById('monthLabelChart').textContent = MTD_MONTH+' '+MTD_YEAR;
-    document.getElementById('monthLabelWow').textContent   = MTD_MONTH+' '+MTD_YEAR;
-    document.getElementById('lastUpdated').textContent = NOW.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-    document.getElementById('footerDate').textContent  = NOW.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-    // ─── CHIPS ───────────────────────────────────────────────────────────────────
-    function buildChips(){
-        var inData=[...new Set(PRODUCTS_RAW.map(function(p){return p.key;}))].sort(function(a,b){return a.localeCompare(b);});
-        activeProds=new Set(inData);
-        document.getElementById('prodChips').innerHTML=inData.map(function(k){
-            return '<span class="chip active" onclick="toggleChip(this,\''+k.replace(/'/g,"\\'")+'\')">' + k + '</span>';
-        }).join('');
-    }
-
-    // ─── INIT ────────────────────────────────────────────────────────────────────
-    renderAll();
+    document.getElementById('footerDate').textContent=
+        new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    loadData(); // vervang met loadData() zodra API live is
 </script>
 </body>
 </html>
