@@ -429,50 +429,82 @@
 
     <!-- RETURNS & REVISIES -->
     <div class="panel" id="panel-returns">
-        <div class="chart2" style="grid-template-columns:1fr 1fr 1fr">
-            <div class="card">
-                <div class="ctitle">Return reasonen (Zibber fault)</div>
-                <div style="position:relative;height:190px"><canvas id="returnPie"></canvas></div>
-            </div>
-            <div class="card">
-                <div class="ctitle">Revisions per product (client)</div>
-                <div style="position:relative;height:190px"><canvas id="revPie"></canvas></div>
-            </div>
-            <div class="card">
-                <div class="ctitle">Returns vs Revisions per product</div>
-                <div style="position:relative;height:190px"><canvas id="retRevBar"></canvas></div>
+        <!-- Toggle -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div style="display:flex;background:var(--zgr);border:0.5px solid var(--zbd);border-radius:var(--r);padding:3px;gap:2px">
+                <button class="tbtn active" id="toggleRet" onclick="setRetRevView('returns')" style="padding:5px 16px">
+                    ↩ Returns (Zibber) <span class="b br" id="retCount" style="margin-left:4px">—</span>
+                </button>
+                <button class="tbtn" id="toggleRev" onclick="setRetRevView('revisions')" style="padding:5px 16px">
+                    ✏ Revisions (client) <span class="b bp" id="revCount" style="margin-left:4px">—</span>
+                </button>
             </div>
         </div>
 
-        <div class="slbl">Return appointments — Zibber fault</div>
-        <div class="tw sx"><table>
-            <thead><tr>
-                <th class="tl">Order ID</th><th>Country</th><th>Product</th>
-                <th title="Date return appointment scheduled">Return appt ⓘ</th>
-                <th title="Reason for the return (picklist)">Return reason ⓘ</th>
-                <th title="Free text note on the appointment">Appointment notes ⓘ</th>
-                <th title="First upload na return appointment">Upload ⓘ</th>
-                <th>SLA status</th>
-                <th class="tl">Links</th>
-            </tr></thead>
-            <tbody id="returnsBody"></tbody>
-        </table></div>
+        <!-- Returns view -->
+        <div id="view-returns">
+            <div class="chart2" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+                <div class="card">
+                    <div class="ctitle">Return reasons (Zibber fault)</div>
+                    <div style="position:relative;height:190px"><canvas id="returnPie"></canvas></div>
+                </div>
+                <div class="card">
+                    <div class="ctitle">Returns per product</div>
+                    <div style="position:relative;height:190px"><canvas id="retRevBar"></canvas></div>
+                </div>
+            </div>
+            <div class="tw sx"><table>
+                <thead><tr>
+                    <th class="tl" style="min-width:90px">Order ID</th>
+                    <th>Country</th>
+                    <th id="retProdFilterTh" style="min-width:140px">
+                        Product
+                        <select id="retProdFilter" onchange="renderReturns()" style="margin-left:6px;font-size:10px;padding:2px 5px;border:0.5px solid var(--zbd);border-radius:4px;background:#fff;color:var(--zt);cursor:pointer">
+                            <option value="">All</option>
+                        </select>
+                    </th>
+                    <th title="Date the return appointment was scheduled">Return date ⓘ</th>
+                    <th title="Return reason from return_appointment_notes">Return reason ⓘ</th>
+                    <th title="Free text notes on the appointment">Appt. notes ⓘ</th>
+                    <th title="First upload after return appointment">Upload ⓘ</th>
+                    <th>SLA status</th>
+                    <th class="tl">Links</th>
+                </tr></thead>
+                <tbody id="returnsBody"></tbody>
+            </table></div>
+        </div>
 
-        <div class="slbl" style="margin-top:4px">Revisions — client request</div>
-        <div class="tw sx"><table>
-            <thead><tr>
-                <th class="tl">Order ID</th>
-                <th>Country</th>
-                <th>Product</th>
-                <th title="Date the revision was requested">Rev. date ⓘ</th>
-                <th class="tl" style="min-width:180px" title="Client instruction from revisions.notes">Client instruction ⓘ</th>
-                <th class="tl" style="min-width:220px" title="Detailed feedback points from revision_feedback.description — may include image annotations">Feedback points ⓘ</th>
-                <th title="Expected re-delivery date after revision">Expected ⓘ</th>
-                <th>Status</th>
-                <th class="tl">Links</th>
-            </tr></thead>
-            <tbody id="revisionsBody"></tbody>
-        </table></div>
+        <!-- Revisions view -->
+        <div id="view-revisions" style="display:none">
+            <div class="chart2" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+                <div class="card">
+                    <div class="ctitle">Revisions per product (client)</div>
+                    <div style="position:relative;height:190px"><canvas id="revPie"></canvas></div>
+                </div>
+                <div class="card">
+                    <div class="ctitle">Revision volume per product</div>
+                    <div style="position:relative;height:190px"><canvas id="revBar"></canvas></div>
+                </div>
+            </div>
+            <div class="tw sx"><table>
+                <thead><tr>
+                    <th class="tl" style="min-width:90px">Order ID</th>
+                    <th>Country</th>
+                    <th id="revProdFilterTh" style="min-width:140px">
+                        Product
+                        <select id="revProdFilter" onchange="renderRevisions()" style="margin-left:6px;font-size:10px;padding:2px 5px;border:0.5px solid var(--zbd);border-radius:4px;background:#fff;color:var(--zt);cursor:pointer">
+                            <option value="">All</option>
+                        </select>
+                    </th>
+                    <th title="Date the revision was requested">Rev. date ⓘ</th>
+                    <th class="tl" style="min-width:280px" title="Client note + feedback points from revision_feedback.description">Client feedback ⓘ</th>
+                    <th title="Expected re-delivery date">Expected ⓘ</th>
+                    <th>Status</th>
+                    <th class="tl">Links</th>
+                </tr></thead>
+                <tbody id="revisionsBody"></tbody>
+            </table></div>
+        </div>
     </div>
 
     <!-- PERFORMANCE -->
@@ -773,21 +805,35 @@
             }))
         ).slice(0,100);
 
-        const returns = [
-            {id:'1661000',country:'NL',prod:'Photography',return_date:'2026-06-10',
-                return_reason:'Quality insufficient',appt_notes:'Lighting incorrect',
-                upload:'2026-06-11 10:00',sla_ok:false},
-            {id:'1661001',country:'BE',prod:'Floorplanner',return_date:'2026-06-08',
-                return_reason:'Wrong recording',appt_notes:'Kitchen not included',
-                upload:'2026-06-09 14:00',sla_ok:true},
-        ];
+        const retProds = ['Photography','Floorplanner','Video','Measurement'];
+        const retReasons = ['Quality insufficient','Wrong angle','Missing room','Blurry images','Wrong property'];
+        const retCountries = ['NL','NL','NL','BE','DE'];
+        const returns = Array.from({length:18},function(_,i){
+            var p=retProds[i%retProds.length];
+            var d='2026-06-'+String(Math.floor(i/3)+1).padStart(2,'0');
+            return {id:String(1661000+i),country:retCountries[i%5],prod:p,
+                return_date:d,return_reason:retReasons[i%retReasons.length],
+                appt_notes:i%3===0?'Additional instruction':'',
+                upload:d.slice(0,10)+' '+String(9+i%8).padStart(2,'0')+':00',sla_ok:i%4!==0};
+        });
 
-        const revisions = [
-            {id:'1662000',country:'NL',prod:'Floorplanner',rev_date:'2026-06-12',
-                notes:'Please add terrace to floor plan',expected_at:'2026-06-13',status:'completed'},
-            {id:'1662001',country:'NL',prod:'Photography',rev_date:'2026-06-11',
-                notes:'Additional photo of bathroom requested',expected_at:'2026-06-12',status:'pending'},
+        const revProds = ['Floorplanner','Photography','Video','360 tour','Matterport'];
+        const revNotes = ['Please add terrace','Wrong dimensions','Missing bedroom','Add garage','Adjust scale'];
+        const fbItems = [
+            ['Wall thickness incorrect','Staircase missing'],
+            ['Exposure too dark'],
+            ['Room label wrong','Scale off'],
+            ['Missing garden view'],
+            ['North arrow missing','Doors drawn wrong'],
         ];
+        const revisions = Array.from({length:24},function(_,i){
+            var p=revProds[i%revProds.length];
+            var d='2026-06-'+String(Math.floor(i/4)+1).padStart(2,'0');
+            return {id:String(1662000+i),country:retCountries[i%5],prod:p,
+                rev_date:d,notes:revNotes[i%revNotes.length],
+                feedback:fbItems[i%fbItems.length],
+                expected_at:d.slice(0,10),status:i%3===0?'completed':'pending'};
+        });
 
         DATA = {periods, products, orders, breach, returns, revisions};
         setCache(activeLand, DATA);
@@ -1161,6 +1207,36 @@
         }).join('');
     }
 
+    // ─── RETURNS & REVISIONS TOGGLE ──────────────────────────────────────────────
+    var activeRetRevView = 'returns';
+
+    function setRetRevView(v){
+        activeRetRevView = v;
+        document.getElementById('toggleRet').classList.toggle('active', v==='returns');
+        document.getElementById('toggleRev').classList.toggle('active', v==='revisions');
+        document.getElementById('view-returns').style.display   = v==='returns'   ? '' : 'none';
+        document.getElementById('view-revisions').style.display = v==='revisions' ? '' : 'none';
+        if(v==='revisions'){ buildRevPie(); buildRevBar(); renderRevisions(); }
+        if(v==='returns')  { buildReturnPie(); buildRetRevBar(); renderReturns(); }
+    }
+
+    function buildRevBar(){
+        var prods = filterProds(DATA.products||[]).filter(function(p){return (p.revisions||0)>0;});
+        if(charts.revBar) charts.revBar.destroy();
+        charts.revBar = new Chart(document.getElementById('revBar'),{type:'bar',
+            data:{
+                labels: prods.map(function(p){return p.key.substring(0,14);}),
+                datasets:[{label:'Revisions',data:prods.map(function(p){return p.revisions||0;}),
+                    backgroundColor:'rgba(139,92,246,.75)',borderRadius:4,borderSkipped:false}]
+            },
+            options:{responsive:true,maintainAspectRatio:false,
+                plugins:{legend:{display:false}},
+                scales:{x:{ticks:{font:{size:10},color:'#888'},grid:{display:false}},
+                    y:{ticks:{font:{size:10},color:'#888'},grid:{color:'rgba(0,0,0,.05)'}}}
+            }
+        });
+    }
+
     // ─── RETURNS & REVISIES ───────────────────────────────────────────────────────
     function buildReturnPie(){
         var counts={};
@@ -1225,19 +1301,60 @@
         }).join(''):'<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--zm);font-size:12px">Geen return data — <code>return_appointment = 1</code> in appointments</td></tr>';
     }
     function renderRevisions(){
-        var rows=filterLand(DATA.revisions||[]);
-        document.getElementById('revisionsBody').innerHTML=rows.length?rows.map(function(r){
+        var all = filterLand(DATA.revisions||[]);
+
+        // Populate product filter dropdown
+        var sel = document.getElementById('revProdFilter');
+        if(sel){
+            var curVal = sel.value;
+            var prods  = [...new Set(all.map(function(r){return r.prod;}))].filter(Boolean).sort();
+            sel.innerHTML = '<option value="">All</option>'+
+                prods.map(function(p){
+                    return '<option value="'+p+'"'+(p===curVal?' selected':'')+'>'+p+'</option>';
+                }).join('');
+        }
+
+        var prodFilter = sel ? sel.value : '';
+        var rows = prodFilter ? all.filter(function(r){return r.prod===prodFilter;}) : all;
+
+        document.getElementById('revisionsBody').innerHTML = rows.length ? rows.map(function(r){
+            // Combined notes + feedback cell:
+            // Notes [client note from revisions.notes]
+            // • feedback item 1
+            // • feedback item 2
+            var hasNotes = r.notes && r.notes.trim();
+            var fbItems  = (r.feedback||[]).filter(function(f){return f&&f.trim();});
+            var cellHtml = '';
+            // Notes as header (bold) — only if present
+            if(hasNotes){
+                cellHtml += '<div style="font-size:11px;font-weight:600;color:var(--zt);margin-bottom:'+(fbItems.length?'5':'0')+'px">'+
+                    r.notes.replace(/</g,'&lt;').replace(/>/g,'&gt;')+
+                    '</div>';
+            }
+            // Feedback bullets — only if present
+            if(fbItems.length){
+                cellHtml += '<ul style="margin:0;padding-left:14px">'+
+                    fbItems.map(function(f){
+                        return '<li style="font-size:11px;color:var(--zm);line-height:1.5;margin-bottom:1px">'+
+                            f.replace(/</g,'&lt;').replace(/>/g,'&gt;')+
+                            '</li>';
+                    }).join('')+
+                    '</ul>';
+            }
+            // Neither notes nor feedback
+            if(!cellHtml) cellHtml = '<span style="color:var(--zm);font-size:11px">—</span>';
+
             return '<tr>'+
                 '<td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/'+r.id+'" target="_blank">'+r.id+'</a></td>'+
                 '<td style="text-align:center"><span class="b bb">'+(r.country||'?')+'</span></td>'+
-                '<td>'+(r.prod||'—')+'</td>'+
+                '<td style="font-size:12px">'+(r.prod||'—')+'</td>'+
                 '<td style="text-align:center">'+(r.rev_date||'—')+'</td>'+
-                '<td class="tl"><span class="rtag" title="'+(r.notes||'')+'">'+(r.notes||'—')+'</span></td>'+
+                '<td class="tl" style="min-width:280px"><div style="max-width:340px">'+cellHtml+'</div></td>'+
                 '<td style="text-align:center">'+(r.expected_at||'—')+'</td>'+
-                '<td style="text-align:center"><span class="b '+(r.status==='completed'?'bg':'bo')+'">'+( r.status||'—')+'</span></td>'+
+                '<td style="text-align:center"><span class="b '+(r.status==='completed'?'bg':'bo')+'">'+(r.status||'—')+'</span></td>'+
                 '<td class="tl">'+links(r.id)+'</td>'+
                 '</tr>';
-        }).join(''):'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--zm)">Geen revisie data</td></tr>';
+        }).join('') : '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--zm)">No revision data</td></tr>';
     }
 
     // ─── PERFORMANCE ─────────────────────────────────────────────────────────────
@@ -1394,6 +1511,14 @@
         renderProducts();
         renderOrders();
         renderBreach();
+        // Set counts on toggle buttons
+        var tRet = (DATA.returns||[]).length;
+        var tRev = (DATA.revisions||[]).length;
+        var retEl = document.getElementById('retCount');
+        var revEl = document.getElementById('revCount');
+        if(retEl) retEl.textContent = tRet;
+        if(revEl) revEl.textContent = tRev;
+        // Render active view
         buildReturnPie();
         buildRevPie();
         buildRetRevBar();
