@@ -26,6 +26,25 @@ class DashboardController
         ]);
     }
 
+    public function mtd(Request $request)
+    {
+        $country  = $request->get('country', 'ALL');
+
+        // MTD window: first day of current month to now
+        $dateFrom = now()->subDays(31)->toDateTimeString();
+        $dateTo   = now()->toDateTimeString();
+
+        $rows = $this->fetchProductions($dateFrom, $dateTo, $country);
+
+        return response()->json([
+            'daily'    => $this->aggregateDaily($rows),
+            'products' => $this->aggregateProducts($rows),
+            'orders'   => $this->aggregateOrders($rows),
+            'breach'   => $this->breachList($rows),
+        ]);
+    }
+
+
     // ── Fetch & merge both queries ────────────────────────────────────────────
     private function fetchProductions(string $from, string $to, string $country): \Illuminate\Support\Collection
     {
