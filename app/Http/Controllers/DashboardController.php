@@ -30,6 +30,7 @@ class DashboardController
 
     public function mtd(Request $request)
     {
+        $this->setDatabase();
         $country  = $request->get('country', 'ALL');
 
         // MTD window: first day of current month to now
