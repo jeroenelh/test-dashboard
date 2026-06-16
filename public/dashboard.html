@@ -16,7 +16,7 @@
         .hdr-title{color:#fff;font-size:16px;font-weight:700}
         .hdr-sub{color:rgba(255,255,255,.4);font-size:11px;margin-top:2px}
         .hdr-right{display:flex;align-items:center;gap:8px}
-        .hdr-time{color:rgba(255,255,255,.35);font-size:11px}
+        .hdr-time{color:rgba(255,255,255,.35);font-size:11px;margin-right:2px}
         .rbtn{display:flex;align-items:center;gap:6px;background:rgba(47,201,116,.15);border:0.5px solid rgba(47,201,116,.35);color:var(--zg);padding:5px 12px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
         .rbtn:hover{background:rgba(47,201,116,.25)}
         .rbtn.loading{opacity:.6;pointer-events:none}
@@ -179,7 +179,8 @@
 <body>
 <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
-    <div class="loading-text">Loading...</div>
+    <div class="loading-text" id="loadingText">Loading data...</div>
+    <div style="color:rgba(255,255,255,.4);font-size:12px;margin-top:6px" id="loadingSubtext">This may take a few seconds</div>
 </div>
 
 <div class="page">
@@ -191,8 +192,9 @@
             <div class="hdr-sub">Last 30 days · Based on appointment date · SLA = Lead time AND FTR</div>
         </div>
         <div class="hdr-right">
-            <span class="hdr-time" id="lastUpdated">—</span>
-            <button class="rbtn" id="refreshBtn" onclick="loadData()">↻ Refresh</button>
+            <span class="hdr-time">Updated: <span id="lastUpdated">—</span></span>
+            <span class="hdr-time" id="cacheIndicator" style="display:none;color:rgba(47,201,116,.6);margin-left:4px">· cached</span>
+            <button class="rbtn" id="refreshBtn" onclick="forceRefresh()">↻ Refresh</button>
             <button class="ibtn" onclick="openSettings()">⚙ Settings</button>
         </div>
     </div>
@@ -607,28 +609,98 @@
     }
 
     // ─── DATA LOADING ─────────────────────────────────────────────────────────────
-    async function loadData(){
-        const btn=document.getElementById('refreshBtn');
-        const overlay=document.getElementById('loadingOverlay');
+    // Cache: store data per country, expire after 15 minutes
+    var _dataCache = {};      // {country: {data, timestamp}}
+    var CACHE_TTL  = 15 * 60 * 1000; // 15 minutes
+
+    function getCached(country){
+        var c = _dataCache[country];
+        if(!c) return null;
+        if(Date.now() - c.timestamp > CACHE_TTL) return null;
+        return c.data;
+    }
+    function setCache(country, data){
+        _dataCache[country] = {data: data, timestamp: Date.now()};
+    }
+    function cacheAge(country){
+        var c = _dataCache[country];
+        if(!c) return null;
+        return Math.round((Date.now() - c.timestamp) / 1000);
+    }
+
+    async function loadData(forceReload){
+        var btn     = document.getElementById('refreshBtn');
+        var overlay = document.getElementById('loadingOverlay');
+        var txtEl   = document.getElementById('loadingText');
+        var subEl   = document.getElementById('loadingSubtext');
+        var cacheEl = document.getElementById('cacheIndicator');
+
+        // Check cache first (unless force reload)
+        if(!forceReload){
+            var cached = getCached(activeLand);
+            if(cached){
+                DATA = cached;
+                buildChips();
+                renderAll();
+                var age = cacheAge(activeLand);
+                document.getElementById('lastUpdated').textContent =
+                    new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+                if(cacheEl){
+                    cacheEl.style.display='inline';
+                    cacheEl.textContent = '· cached ' + (age < 60 ? age+'s ago' : Math.round(age/60)+'m ago');
+                }
+                return;
+            }
+        }
+
+        // No cache or force reload — hit the API
         btn.classList.add('loading');
         btn.textContent='↻ Loading...';
         overlay.classList.add('show');
+        if(txtEl) txtEl.textContent = 'Loading data for ' + activeLand + '...';
+        if(subEl) subEl.textContent = 'Query covers 30 days — this takes a few seconds';
+        if(cacheEl) cacheEl.style.display='none';
+
+        // Show progress messages while waiting
+        var msgs = [
+            [2000,  'Fetching appointments...'],
+            [5000,  'Joining productions...'],
+            [10000, 'Calculating SLA metrics...'],
+            [18000, 'Aggregating results...'],
+            [28000, 'Almost there...'],
+        ];
+        var timers = msgs.map(function(m){
+            return setTimeout(function(){if(txtEl) txtEl.textContent = m[1];}, m[0]);
+        });
+
         try {
-            const res  = await fetch('/dashboard/v8?country='+activeLand);
-            const json = await res.json();
+            var res  = await fetch('/dashboard/v8?country='+activeLand);
+            var json = await res.json();
             DATA = json;
+            setCache(activeLand, json);
             buildChips();
             renderAll();
-            document.getElementById('lastUpdated').textContent =
-                new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+            var now = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+            document.getElementById('lastUpdated').textContent = now;
+            if(cacheEl) cacheEl.style.display='none';
         } catch(e) {
             console.error('Load failed:', e);
-            alert('Load failed — check if the API is reachable');
+            if(txtEl) txtEl.textContent = 'Load failed';
+            if(subEl) subEl.textContent = 'Check if the API is reachable';
+            setTimeout(function(){ overlay.classList.remove('show'); }, 3000);
         } finally {
+            timers.forEach(clearTimeout);
             btn.classList.remove('loading');
             btn.textContent='↻ Refresh';
             overlay.classList.remove('show');
         }
+    }
+
+    function forceRefresh(){
+        // Clear cache for current country and reload
+        delete _dataCache[activeLand];
+        // Switch to loadData(true) when API is live
+        loadMockData();
     }
 
     // ─── MOCK DATA (verwijder zodra API live is) ──────────────────────────────────
@@ -715,10 +787,13 @@
         ];
 
         DATA = {periods, products, orders, breach, returns, revisions};
+        setCache(activeLand, DATA);
         buildChips();
         renderAll();
         document.getElementById('lastUpdated').textContent =
-            new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' (mock)';
+            new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+        var cacheEl = document.getElementById('cacheIndicator');
+        if(cacheEl){ cacheEl.style.display='inline'; cacheEl.textContent='· mock data'; }
     }
 
     // ─── TOOLTIP ─────────────────────────────────────────────────────────────────
@@ -1243,7 +1318,25 @@
     // ─── CONTROLS ────────────────────────────────────────────────────────────────
     function setLand(btn,v){
         document.querySelectorAll('#landBtns .tbtn').forEach(function(b){b.classList.remove('active');});
-        btn.classList.add('active');activeLand=v;renderAll();
+        btn.classList.add('active');
+        activeLand = v;
+        // If we have cached data for this country, render immediately
+        var cached = getCached(v);
+        if(cached){
+            DATA = cached;
+            buildChips();
+            renderAll();
+            var age = cacheAge(v);
+            var cacheEl = document.getElementById('cacheIndicator');
+            if(cacheEl){
+                cacheEl.style.display='inline';
+                cacheEl.textContent = '· cached ' + (age < 60 ? age+'s ago' : Math.round(age/60)+'m ago');
+            }
+        } else {
+            // No cache for this country — fetch from API
+            // Switch to loadData(false) when API is live
+            loadMockData();
+        }
     }
     function setPeriod(p){
         activePeriod=p;
@@ -1309,7 +1402,9 @@
     // ─── INIT ────────────────────────────────────────────────────────────────────
     document.getElementById('footerDate').textContent=
         new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-    loadData(); // vervang met loadData() zodra API live is
+    // Use loadMockData() during development, loadData() when API is live
+    //loadMockData();
+     loadData();//  ← uncomment when API is ready
 </script>
 </body>
 </html>
