@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -10,7 +11,8 @@ class DashboardController
 {
     public function index(Request $request)
     {
-        $dateFrom = $request->get('from', now()->startOfYear()->toDateTimeString());
+        $this->setDatabase();
+        $dateFrom = $request->get('from', now()->subDays(31)->toDateTimeString());
         $dateTo   = $request->get('to',   now()->toDateTimeString());
         $country  = $request->get('country', 'ALL'); // NL / BE / DE / ALL
 
@@ -272,5 +274,18 @@ class DashboardController
                  fh.created_at, d.id, d.created_at
         ORDER BY p.id DESC
     ";
+    }
+
+
+    private function setDatabase(): void
+    {
+        Config::set("database.connections.live", [
+            "driver" => "mysql",
+            "host" => env('DB_LIVE_HOST'),
+            "port" => env('DB_LIVE_PORT'),
+            "database"=> env('DB_LIVE_DATABASE'),
+            "username" => env('DB_LIVE_USERNAME'),
+            "password" => env('DB_LIVE_PASSWORD'),
+        ]);
     }
 }
