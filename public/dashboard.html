@@ -677,7 +677,7 @@
         });
 
         try {
-            var res  = await fetch('/api/dashboard/v8?country='+activeLand);
+            var res  = await fetch('/dashboard/v8?country='+activeLand);
             var json = await res.json();
             DATA = json;
             setCache(activeLand, json);
