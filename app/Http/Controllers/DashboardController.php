@@ -51,7 +51,7 @@ class DashboardController
     {
         $this->setDatabase();
         $country  = $request->get('country', 'ALL');
-        $dateFrom = now()->subDays(30)->startOfDay()->toDateTimeString();
+        $dateFrom = now()->subDays(10)->startOfDay()->toDateTimeString();
         $dateTo   = now()->toDateTimeString();
         $cacheKey = 'dashboard_v8_' . md5($country . date('Y-m-d-H'));
 
