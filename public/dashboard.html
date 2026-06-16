@@ -461,10 +461,13 @@
         <div class="slbl" style="margin-top:4px">Revisions — client request</div>
         <div class="tw sx"><table>
             <thead><tr>
-                <th class="tl">Order ID</th><th>Country</th><th>Product</th>
-                <th title="Date revision requested">Revisie datum ⓘ</th>
-                <th title="Client instruction (revisions.notes)">Client instruction ⓘ</th>
-                <th title="Expected delivery after revision">Expected ⓘ</th>
+                <th class="tl">Order ID</th>
+                <th>Country</th>
+                <th>Product</th>
+                <th title="Date the revision was requested">Rev. date ⓘ</th>
+                <th class="tl" style="min-width:180px" title="Client instruction from revisions.notes">Client instruction ⓘ</th>
+                <th class="tl" style="min-width:220px" title="Detailed feedback points from revision_feedback.description — may include image annotations">Feedback points ⓘ</th>
+                <th title="Expected re-delivery date after revision">Expected ⓘ</th>
                 <th>Status</th>
                 <th class="tl">Links</th>
             </tr></thead>
@@ -674,7 +677,7 @@
         });
 
         try {
-            var res  = await fetch('/dashboard/v8?country='+activeLand);
+            var res  = await fetch('/api/dashboard/v8?country='+activeLand);
             var json = await res.json();
             DATA = json;
             setCache(activeLand, json);
@@ -1404,7 +1407,7 @@
         new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
     // Use loadMockData() during development, loadData() when API is live
     //loadMockData();
-     loadData();//  ← uncomment when API is ready
+    loadData(); // ← uncomment when API is ready
 </script>
 </body>
 </html>
