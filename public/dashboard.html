@@ -1249,6 +1249,7 @@
     // ─── RENDER ALL ───────────────────────────────────────────────────────────────
     async function renderAll(){
         await loadData();
+        buildChips();
         renderKPI();
         buildMainChart();
         buildBreachDonut();
@@ -1282,7 +1283,6 @@
     }
 
     // ─── INIT ────────────────────────────────────────────────────────────────────
-    buildChips();
     renderAll();
 </script>
 </body>
