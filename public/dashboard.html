@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zibber · Production Monitor — MTD</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--zd:#1F2E4A;--zb:#1F80F0;--zg:#2FC974;--zlight:#ECF2FD;--zgrey:#F6F6F6;--zborder:#E2E8F0;--zt:#1A202C;--zm:#64748B;--zr:#E24B4A;--za:#EF9F27;--r:9px;--rlg:12px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;background:var(--zgrey);color:var(--zt)}
+.page{max-width:1500px;margin:0 auto;padding:14px}
+
+/* Header */
+.hdr{background:var(--zd);border-radius:var(--rlg);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.hdr-logo{color:#fff;font-size:16px;font-weight:600}.hdr-logo span{color:var(--zg)}
+.hdr-sub{color:rgba(255,255,255,.4);font-size:11px;margin-top:2px}
+.hdr-badge{background:rgba(47,201,116,.2);border:0.5px solid rgba(47,201,116,.4);color:var(--zg);font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-left:12px;letter-spacing:.03em}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.hdr-time{color:rgba(255,255,255,.35);font-size:11px;margin-right:4px}
+.ibtn{background:rgba(255,255,255,.08);border:0.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.75);padding:5px 12px;border-radius:var(--r);font-size:12px;cursor:pointer}
+.ibtn:hover{background:rgba(255,255,255,.15)}
+
+/* Filter bar */
+.fbar{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.fg{display:flex;align-items:center;gap:6px}
+.fl{font-size:11px;color:var(--zm);font-weight:500;white-space:nowrap}
+.lbtn{padding:4px 10px;font-size:11px;font-weight:500;border:0.5px solid var(--zborder);border-radius:var(--r);background:#fff;cursor:pointer;color:var(--zm)}
+.lbtn.active{background:var(--zd);color:#fff;border-color:var(--zd)}
+.lbtn:hover:not(.active){border-color:var(--zb);color:var(--zb)}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{padding:3px 9px;font-size:11px;border-radius:20px;border:0.5px solid var(--zborder);cursor:pointer;color:var(--zm);background:#fff;user-select:none}
+.chip.active{background:var(--zlight);color:var(--zd);border-color:var(--zb);font-weight:500}
+.fdiv{width:0.5px;height:22px;background:var(--zborder);flex-shrink:0}
+.mtd-label{font-size:11px;font-weight:600;color:var(--zd);background:var(--zlight);padding:4px 12px;border-radius:20px;border:0.5px solid var(--zb)}
+
+/* KPI grid */
+.kgrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.kpi{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:11px 13px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi.kblue::before{background:var(--zb)}.kpi.kgreen::before{background:var(--zg)}
+.kpi.kred::before{background:var(--zr)}.kpi.kamber::before{background:var(--za)}
+.klbl{font-size:10px;color:var(--zm);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:500}
+.kval{font-size:22px;font-weight:700;color:var(--zt);line-height:1}
+.kval.green{color:#1a6b35}.kval.red{color:var(--zr)}.kval.amber{color:#7a4200}
+.kdelta{font-size:10px;margin-top:3px;color:var(--zm)}
+.kdelta.up{color:var(--zg)}.kdelta.dn{color:var(--zr)}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--zborder);margin-bottom:14px}
+.tab{padding:7px 16px;font-size:12px;font-weight:500;cursor:pointer;color:var(--zm);border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:var(--r) var(--r) 0 0;white-space:nowrap}
+.tab:hover{color:var(--zb);background:var(--zlight)}.tab.active{color:var(--zd);border-bottom-color:var(--zb);background:#fff}
+.panel{display:none !important}.panel.active{display:block !important}
+
+/* Cards */
+.card{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:16px;overflow:visible}
+.ctitle{font-size:12px;font-weight:600;color:var(--zt);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.legend{display:flex;gap:10px;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--zm)}
+.lsq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.lline{width:18px;height:2px;flex-shrink:0}
+.chart-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;margin-bottom:12px;overflow:visible}
+
+/* Section label */
+.slabel{font-size:11px;font-weight:600;color:var(--zm);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
+
+/* Tables */
+.twrap{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);overflow:hidden;margin-bottom:12px}
+.twrap.sx{overflow-x:auto}.twrap.sy{max-height:520px;overflow-y:auto;overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--zd);color:rgba(255,255,255,.85);font-size:11px;font-weight:500;padding:8px 10px;text-align:right;white-space:nowrap;position:sticky;top:0;z-index:2}
+thead th.tl{text-align:left}
+thead th.grp{background:#243454;font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+tbody td{padding:6px 10px;text-align:right;font-size:12px;border-bottom:0.5px solid var(--zborder);vertical-align:middle}
+tbody td.tl{text-align:left}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--zlight)}
+tfoot td{background:var(--zgrey);font-weight:600;font-size:12px;border-top:1.5px solid var(--zborder);text-align:right}
+tfoot td.tl{text-align:left}
+.col-sep{background:#f0f3f8 !important;width:6px;padding:0 !important;border-left:1.5px solid var(--zborder) !important;border-right:1.5px solid var(--zborder) !important}
+.today-row td{background:#FFFBEB}.today-row:hover td{background:var(--zlight)}
+.tbadge{font-size:9px;font-weight:700;background:var(--za);color:#fff;padding:1px 5px;border-radius:4px;margin-left:5px;vertical-align:middle}
+
+/* Badges */
+.b{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.bg{background:#EAF3DE;color:#3B6D11}.ba{background:#FAEEDA;color:#854F0B}
+.br{background:#FCEBEB;color:#A32D2D}.bb{background:var(--zlight);color:#0C447C}
+.bo{background:#FFF3E0;color:#7a4200}
+
+/* Cell colors */
+.cg{background:#EAF3DE}.co{background:#FAEEDA}.cr{background:#FCEBEB}
+
+/* SLA bar */
+.sbar{display:flex;height:6px;border-radius:3px;overflow:hidden;width:80px;flex-shrink:0}
+.sin{background:var(--zg)}.sout{background:var(--zr)}
+.scell{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+
+/* Links */
+.olink{color:var(--zb);font-weight:600;text-decoration:none;font-size:12px}.olink:hover{text-decoration:underline}
+.elinks{display:flex;gap:4px}
+.elink{font-size:10px;color:var(--zm);background:var(--zgrey);padding:2px 6px;border-radius:var(--r);text-decoration:none;border:0.5px solid var(--zborder)}
+.elink:hover{color:var(--zb);border-color:var(--zb)}
+.rtag{font-size:10px;color:var(--zm);background:var(--zgrey);padding:2px 7px;border-radius:var(--r);display:inline-block}
+.plink{font-size:11px;color:var(--zb);text-decoration:none}.plink:hover{text-decoration:underline}
+
+/* Performance cards */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px}
+.pcard{background:#fff;border:0.5px solid var(--zborder);border-radius:var(--rlg);padding:14px}
+.pcard.ok{border-left:4px solid var(--zg)}.pcard.warn{border-left:4px solid var(--za)}.pcard.fail{border-left:4px solid var(--zr)}
+.pcard-name{font-size:12px;font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.pstats{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
+.pst{background:var(--zgrey);border-radius:var(--r);padding:6px 8px}
+.pst-lbl{font-size:10px;color:var(--zm);text-transform:uppercase;letter-spacing:.04em;font-weight:500;margin-bottom:2px}
+.pst-val{font-size:14px;font-weight:700;color:var(--zt)}
+.pst-val.ok{color:#1a6b35}.pst-val.fail{color:var(--zr)}.pst-val.amb{color:#7a4200}
+.pbar-wrap{margin-top:6px}
+.pbar-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--zm);margin-bottom:3px}
+.pbar{height:7px;background:var(--zborder);border-radius:4px;overflow:visible;position:relative}
+.pbar-fill{height:100%;border-radius:4px}
+.pbar-target{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--zd);border-radius:1px;z-index:2}
+.pbar-note{font-size:10px;margin-top:3px;text-align:right}
+
+/* Ttbar */
+.ttbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+.tsearch{padding:5px 10px;border:0.5px solid var(--zborder);border-radius:var(--r);font-size:12px;width:190px;color:var(--zt);background:#fff}
+.tsearch:focus{outline:none;border-color:var(--zb)}
+
+/* Settings */
+.overlay{display:none;position:fixed;inset:0;background:rgba(15,25,50,.5);z-index:100;align-items:flex-start;justify-content:flex-end;padding:60px 14px 14px}
+.overlay.open{display:flex}
+.sp{background:#fff;border-radius:var(--rlg);width:400px;max-height:calc(100vh - 80px);overflow-y:auto;border:0.5px solid var(--zborder)}
+.sp-hdr{background:var(--zd);padding:13px 18px;border-radius:var(--rlg) var(--rlg) 0 0;display:flex;align-items:center;justify-content:space-between}
+.sp-hdr span{color:#fff;font-size:14px;font-weight:600}
+.sp-hdr button{background:transparent;border:none;color:rgba(255,255,255,.6);font-size:22px;cursor:pointer;line-height:1}
+.sp-hdr button:hover{color:#fff}
+.sp-body{padding:16px 18px}
+.sp-section{font-size:11px;font-weight:600;color:var(--zm);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
+.sp-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--zborder)}
+.sp-row:last-child{border-bottom:none}
+.sp-name{font-size:12px;color:var(--zt);font-weight:500}
+.sp-inp{width:65px;padding:4px 8px;border:0.5px solid var(--zborder);border-radius:var(--r);font-size:12px;text-align:right}
+.sp-inp:focus{outline:none;border-color:var(--zb)}
+.sp-save{width:100%;margin-top:14px;padding:9px;background:var(--zb);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer}
+.sp-save:hover{background:#1a6fd4}
+.footer{text-align:center;font-size:11px;color:var(--zm);margin-top:20px;padding-top:10px;border-top:0.5px solid var(--zborder)}
+@media(max-width:1100px){.kgrid{grid-template-columns:repeat(4,1fr)}.chart-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.kgrid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="hdr">
+  <div style="display:flex;align-items:center">
+    <div>
+      <div class="hdr-logo">Zibber <span>·</span> Production Monitor <span class="hdr-badge" id="mtdBadge">MTD</span></div>
+      <div class="hdr-sub">Month to date · SLA = Lead time AND FTR (0 revisions) · order on target = all productions on target</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <span class="hdr-time" id="lastUpdated">Jun 16, 2026</span>
+    <button class="ibtn" onclick="openSettings()">⚙ Settings</button>
+  </div>
+</div>
+
+<!-- Filter bar -->
+<div class="fbar">
+  <div class="fg">
+    <span class="fl">Country</span>
+    <div style="display:flex;gap:4px">
+      <button class="lbtn active" onclick="setLand(this,'ALL')">ALL</button>
+      <button class="lbtn" onclick="setLand(this,'NL')">NL</button>
+      <button class="lbtn" onclick="setLand(this,'BE')">BE</button>
+      <button class="lbtn" onclick="setLand(this,'DE')">DE</button>
+    </div>
+  </div>
+  <div class="fdiv"></div>
+  <div class="fg" style="flex-wrap:wrap">
+    <span class="fl">Product</span>
+    <div class="chips" id="prodChips"></div>
+  </div>
+</div>
+
+<!-- KPI row — 8 cards -->
+<div class="kgrid">
+  <div class="kpi kblue"><div class="klbl">Orders MTD</div><div class="kval" id="k-ord-tot">—</div><div class="kdelta" id="kd-ord-tot"></div></div>
+  <div class="kpi kgreen"><div class="klbl">Delivered</div><div class="kval green" id="k-ord-del">—</div><div class="kdelta up" id="kd-ord-del"></div></div>
+  <div class="kpi kamber"><div class="klbl">In progress</div><div class="kval amber" id="k-ord-prog">—</div><div class="kdelta" id="kd-ord-prog"></div></div>
+  <div class="kpi kgreen"><div class="klbl">Orders on target</div><div class="kval green" id="k-ord-on">—</div><div class="kdelta" id="kd-ord-on"></div></div>
+  <div class="kpi kblue"><div class="klbl">Productions MTD</div><div class="kval" id="k-prod-tot">—</div><div class="kdelta" id="kd-prod-tot"></div></div>
+  <div class="kpi kgreen"><div class="klbl">Prod. delivered</div><div class="kval green" id="k-prod-del">—</div><div class="kdelta up" id="kd-prod-del"></div></div>
+  <div class="kpi kamber"><div class="klbl">Prod. in progress</div><div class="kval amber" id="k-prod-prog">—</div><div class="kdelta" id="kd-prod-prog"></div></div>
+  <div class="kpi kred"><div class="klbl">SLA breach</div><div class="kval red" id="k-breach">—</div><div class="kdelta dn" id="kd-breach"></div></div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('overview')">Overview</div>
+  <div class="tab" onclick="switchTab('products')">Products</div>
+  <div class="tab" onclick="switchTab('orders')">Order detail</div>
+  <div class="tab" onclick="switchTab('breach')">SLA breach <span class="b br" style="margin-left:4px" id="breachCount">—</span></div>
+  <div class="tab" onclick="switchTab('perf')">Performance</div>
+</div>
+
+<!-- TAB 1: OVERVIEW -->
+<div class="panel active" id="panel-overview">
+  <div class="chart-grid">
+    <div class="card">
+      <div class="ctitle">
+        <span id="chartTitle">Daily on-target % — MTD</span>
+        <div class="legend">
+          <span class="li"><span class="lsq" style="background:rgba(31,128,240,.2);border:1px solid rgba(31,128,240,.35)"></span>Order volume</span>
+          <span class="li"><span class="lline" style="background:var(--zb)"></span>Orders on target %</span>
+          <span class="li"><span class="lline" style="background:var(--zg)"></span>Productions on target %</span>
+          <span class="li"><span class="lsq" style="background:var(--zd);width:16px;height:2px;border-radius:0"></span><span id="tgtLegend">95%</span> target</span>
+        </div>
+      </div>
+      <div style="position:relative;height:220px">
+        <canvas id="mainChart" role="img" aria-label="Daily on-target % for current month">MTD daily chart.</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ctitle">Breach breakdown</div>
+      <div style="position:relative;height:220px">
+        <canvas id="breachChart" role="img" aria-label="Breach type breakdown">Breach chart.</canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="slabel">Daily breakdown — <span id="monthLabel"></span></div>
+  <div class="twrap sx">
+    <table>
+      <thead><tr>
+        <th class="tl" style="min-width:105px">Date</th>
+        <th style="min-width:70px">Orders</th>
+        <th style="min-width:80px">Delivered</th>
+        <th style="min-width:80px">In progress</th>
+        <th style="min-width:85px">On target %</th>
+        <th style="min-width:65px">Breach</th>
+        <th style="min-width:80px">Prods total</th>
+        <th style="min-width:80px">Prods del.</th>
+        <th style="min-width:90px">Prod. on target %</th>
+        <th style="min-width:75px">Breach LT</th>
+        <th style="min-width:75px">Breach FTR</th>
+        <th style="min-width:75px">Breach both</th>
+      </tr></thead>
+      <tbody id="dailyBody"></tbody>
+      <tfoot id="dailyFoot"></tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 2: PRODUCTS -->
+<div class="panel" id="panel-products">
+  <div class="slabel">Product group breakdown — MTD</div>
+  <div class="twrap sx">
+    <table>
+      <thead>
+        <tr>
+          <th class="tl" rowspan="2" style="min-width:155px;vertical-align:middle">Product group</th>
+          <th rowspan="2" style="vertical-align:middle">SLA norm</th>
+          <th colspan="4" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Orders</th>
+          <th class="col-sep" rowspan="2"></th>
+          <th colspan="7" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Productions</th>
+          <th rowspan="2" style="min-width:100px;vertical-align:middle">SLA bar</th>
+        </tr>
+        <tr>
+          <th style="min-width:65px;border-left:2px solid #3a4d6b">Total</th>
+          <th style="min-width:75px">Delivered</th>
+          <th style="min-width:75px">In progress</th>
+          <th style="min-width:85px">On target %</th>
+          <th style="min-width:70px;border-left:2px solid #3a4d6b">Total</th>
+          <th style="min-width:75px">Delivered</th>
+          <th style="min-width:75px">In progress</th>
+          <th style="min-width:85px">On target %</th>
+          <th style="min-width:70px">Breach LT</th>
+          <th style="min-width:70px">Breach FTR</th>
+          <th style="min-width:70px">Breach both</th>
+        </tr>
+      </thead>
+      <tbody id="productBody"></tbody>
+      <tfoot id="productFoot"></tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 3: ORDER DETAIL -->
+<div class="panel" id="panel-orders">
+  <div class="ttbar">
+    <span style="font-size:11px;color:var(--zm)"><span class="b bg">green = on target</span> <span class="b br" style="margin-left:4px">red = breach</span> · order on target = ALL productions on target</span>
+    <input class="tsearch" type="text" placeholder="Search order ID..." oninput="renderOrders(this.value)">
+  </div>
+  <div class="twrap sy">
+    <table>
+      <thead><tr>
+        <th class="tl" style="min-width:90px">Order ID</th>
+        <th class="tl" style="min-width:55px">Country</th>
+        <th class="tl" style="min-width:70px">Status</th>
+        <th class="tl" style="min-width:75px">Links</th>
+        <th style="min-width:115px">Photography</th>
+        <th style="min-width:115px">Floorplanner</th>
+        <th style="min-width:100px">Measurement</th>
+        <th style="min-width:100px">CAD Report</th>
+        <th style="min-width:100px">Video</th>
+        <th style="min-width:110px">Soc. media video</th>
+        <th style="min-width:100px">Soc. media reel</th>
+        <th style="min-width:95px">360 tour</th>
+        <th style="min-width:110px">Drone photo</th>
+        <th style="min-width:95px">Matterport</th>
+        <th style="min-width:95px">KuulaTour</th>
+        <th style="min-width:95px">Drone video</th>
+        <th style="min-width:110px">Artist impr.</th>
+        <th style="min-width:110px">Evening impr.</th>
+        <th style="min-width:80px">WOFL</th>
+      </tr></thead>
+      <tbody id="orderBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 4: BREACH -->
+<div class="panel" id="panel-breach">
+  <div class="ttbar">
+    <span style="font-size:11px;color:var(--zm)">Lead time &gt; SLA norm <strong>or</strong> revisions &gt; 0 (FTR failure)</span>
+    <input class="tsearch" type="text" placeholder="Search order / product..." oninput="renderBreach(this.value)">
+  </div>
+  <div class="twrap sx">
+    <table>
+      <thead><tr>
+        <th class="tl" style="min-width:90px">Order ID</th>
+        <th style="min-width:55px">Country</th>
+        <th style="min-width:140px">Product group</th>
+        <th style="min-width:95px">Order created</th>
+        <th style="min-width:100px">Upload time</th>
+        <th style="min-width:95px">SLA deadline</th>
+        <th style="min-width:75px">Lead time</th>
+        <th style="min-width:65px">SLA norm</th>
+        <th style="min-width:60px">Revisions</th>
+        <th style="min-width:120px">Breach reason</th>
+        <th class="tl" style="min-width:75px">Links</th>
+      </tr></thead>
+      <tbody id="breachBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 5: PERFORMANCE -->
+<div class="panel" id="panel-perf">
+  <div class="ttbar">
+    <span style="font-size:11px;color:var(--zm)">All product groups vs <strong id="targetLabel">95%</strong> on-target baseline · MTD</span>
+    <div style="display:flex;gap:6px">
+      <span class="b bg">≥ target</span>
+      <span class="b ba">within 10%</span>
+      <span class="b br">&gt;10% below</span>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div class="ctitle">
+      <span>On-target % per product — orders vs productions</span>
+      <div class="legend">
+        <span class="li"><span class="lsq" style="background:#1F80F0"></span>Orders on target %</span>
+        <span class="li"><span class="lsq" style="background:#2FC974"></span>Productions on target %</span>
+      </div>
+    </div>
+    <div style="position:relative;height:200px">
+      <canvas id="perfChart" role="img" aria-label="On-target % per product group">Performance chart.</canvas>
+    </div>
+  </div>
+  <div class="pgrid" id="perfGrid"></div>
+  <div class="slabel">Performance summary</div>
+  <div class="twrap sx">
+    <table>
+      <thead>
+        <tr>
+          <th class="tl" rowspan="2" style="min-width:155px;vertical-align:middle">Product group</th>
+          <th rowspan="2" style="vertical-align:middle">Target</th>
+          <th colspan="3" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Orders</th>
+          <th class="col-sep" rowspan="2"></th>
+          <th colspan="5" class="grp" style="text-align:center;border-left:2px solid #3a4d6b">Productions</th>
+        </tr>
+        <tr>
+          <th style="border-left:2px solid #3a4d6b">Total</th>
+          <th>On target</th>
+          <th>On target %</th>
+          <th style="border-left:2px solid #3a4d6b">Total</th>
+          <th>On target</th>
+          <th>On target %</th>
+          <th>vs target</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="perfBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+  <div class="sp">
+    <div class="sp-hdr"><span>⚙ Settings</span><button onclick="closeSettings()">×</button></div>
+    <div class="sp-body">
+      <div class="sp-section">On-target baseline</div>
+      <div class="sp-row">
+        <span class="sp-name">Target %</span>
+        <div style="display:flex;align-items:center;gap:5px">
+          <input class="sp-inp" type="number" id="globalTarget" value="95" min="50" max="100">
+          <span style="font-size:11px;color:var(--zm)">%</span>
+        </div>
+      </div>
+      <div class="sp-section">SLA norms per product group (hours)</div>
+      <div id="settingsRows"></div>
+      <button class="sp-save" onclick="saveSettings()">Save &amp; apply</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer"><strong>Zibber</strong> · Production Monitor MTD · <span id="footerDate"></span> · #SERIOUSIMPACT</div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const PROD_CFG = [
+  {key:'Photography',        sla:24},
+  {key:'Floorplanner',       sla:24},
+  {key:'Measurement',        sla:24},
+  {key:'CAD Report',         sla:54},
+  {key:'Video',              sla:24},
+  {key:'Social media video', sla:24},
+  {key:'Social Media Reel',  sla:24},
+  {key:'360 tour',           sla:24},
+  {key:'Drone photography',  sla:54},
+  {key:'Matterport',         sla:24},
+  {key:'KuulaTour',          sla:24},
+  {key:'Drone video',        sla:24},
+  {key:'Artist impression',  sla:72},
+  {key:'Evening impression', sla:24},
+  {key:'WOFL',               sla:24},
+];
+
+let CFG = JSON.parse(localStorage.getItem('zbV5Cfg') || 'null') || {
+  target: 95,
+  sla: Object.fromEntries(PROD_CFG.map(p => [p.key, p.sla]))
+};
+
+// ─── MTD WINDOW ───────────────────────────────────────────────────────────────
+const NOW       = new Date();
+const MTD_FROM  = new Date(NOW.getFullYear(), NOW.getMonth(), 1);
+const MTD_TO    = NOW;
+const MTD_MONTH = NOW.toLocaleString('en', {month:'long'});
+const MTD_YEAR  = NOW.getFullYear();
+
+// ─── MOCK DATA — replace with fetch('/api/dashboard/mtd') ────────────────────
+// Daily rows for current month (June 2026)
+const DAILY_RAW = [
+  {d:'2026-06-16',ordTot:22, ordDel:0,  ordOn:0,  prodTot:74, prodDel:0,  prodOn:0,  lt:0,  ftr:0,  both:22},
+  {d:'2026-06-15',ordTot:386,ordDel:177,ordOn:110, prodTot:1284,prodDel:650,prodOn:420, lt:80, ftr:60, both:90},
+  {d:'2026-06-12',ordTot:355,ordDel:337,ordOn:289, prodTot:1172,prodDel:1100,prodOn:980,lt:40, ftr:30, both:50},
+  {d:'2026-06-11',ordTot:398,ordDel:384,ordOn:320, prodTot:1313,prodDel:1250,prodOn:1100,lt:50,ftr:40,both:60},
+  {d:'2026-06-10',ordTot:405,ordDel:398,ordOn:352, prodTot:1337,prodDel:1300,prodOn:1180,lt:40,ftr:30,both:50},
+  {d:'2026-06-09',ordTot:412,ordDel:403,ordOn:358, prodTot:1360,prodDel:1320,prodOn:1200,lt:45,ftr:35,both:40},
+  {d:'2026-06-08',ordTot:395,ordDel:382,ordOn:330, prodTot:1304,prodDel:1250,prodOn:1100,lt:50,ftr:40,both:60},
+  {d:'2026-06-05',ordTot:403,ordDel:398,ordOn:370, prodTot:1330,prodDel:1300,prodOn:1200,lt:30,ftr:25,both:45},
+  {d:'2026-06-04',ordTot:404,ordDel:399,ordOn:371, prodTot:1333,prodDel:1310,prodOn:1210,lt:28,ftr:22,both:40},
+  {d:'2026-06-03',ordTot:403,ordDel:400,ordOn:388, prodTot:1330,prodDel:1320,prodOn:1280,lt:15,ftr:10,both:15},
+  {d:'2026-06-02',ordTot:434,ordDel:422,ordOn:370, prodTot:1432,prodDel:1390,prodOn:1250,lt:40,ftr:30,both:70},
+  {d:'2026-06-01',ordTot:476,ordDel:458,ordOn:390, prodTot:1571,prodDel:1510,prodOn:1350,lt:50,ftr:40,both:70},
+];
+
+const PRODUCTS_RAW = [
+  {key:'Photography',        ordTot:280,ordDel:240,ordOn:170, prodTot:1400,prodDel:1200,prodOn:850, lt:80, ftr:120,both:150},
+  {key:'Floorplanner',       ordTot:270,ordDel:230,ordOn:100, prodTot:1350,prodDel:1150,prodOn:500, lt:200,ftr:280,both:170},
+  {key:'Measurement',        ordTot:20, ordDel:12, ordOn:6,   prodTot:20,  prodDel:12,  prodOn:6,   lt:3,  ftr:2,  both:1},
+  {key:'CAD Report',         ordTot:30, ordDel:25, ordOn:14,  prodTot:30,  prodDel:25,  prodOn:14,  lt:5,  ftr:4,  both:2},
+  {key:'Video',              ordTot:240,ordDel:200,ordOn:140, prodTot:1200,prodDel:1000,prodOn:700, lt:100,ftr:80, both:120},
+  {key:'Social media video', ordTot:18, ordDel:14, ordOn:7,   prodTot:18,  prodDel:14,  prodOn:7,   lt:3,  ftr:2,  both:2},
+  {key:'Social Media Reel',  ordTot:8,  ordDel:6,  ordOn:4,   prodTot:8,   prodDel:6,   prodOn:4,   lt:1,  ftr:1,  both:0},
+  {key:'360 tour',           ordTot:220,ordDel:185,ordOn:130, prodTot:1100,prodDel:925, prodOn:650, lt:90, ftr:60, both:125},
+  {key:'Drone photography',  ordTot:12, ordDel:10, ordOn:6,   prodTot:12,  prodDel:10,  prodOn:6,   lt:2,  ftr:1,  both:1},
+  {key:'Matterport',         ordTot:22, ordDel:18, ordOn:12,  prodTot:22,  prodDel:18,  prodOn:12,  lt:2,  ftr:2,  both:2},
+  {key:'KuulaTour',          ordTot:5,  ordDel:4,  ordOn:3,   prodTot:5,   prodDel:4,   prodOn:3,   lt:0,  ftr:1,  both:0},
+  {key:'Drone video',        ordTot:6,  ordDel:5,  ordOn:3,   prodTot:6,   prodDel:5,   prodOn:3,   lt:1,  ftr:1,  both:0},
+  {key:'Artist impression',  ordTot:10, ordDel:8,  ordOn:5,   prodTot:10,  prodDel:8,   prodOn:5,   lt:1,  ftr:1,  both:1},
+  {key:'Evening impression', ordTot:4,  ordDel:3,  ordOn:2,   prodTot:4,   prodDel:3,   prodOn:2,   lt:0,  ftr:1,  both:0},
+  {key:'WOFL',               ordTot:2,  ordDel:2,  ordOn:1,   prodTot:2,   prodDel:2,   prodOn:1,   lt:0,  ftr:1,  both:0},
+];
+
+const ORDERS_RAW = [
+  {id:'1662862',country:'NL',photo:{id:'709070',ok:true}, floor:{id:'711004',ok:false}},
+  {id:'1663616',country:'NL',floor:{id:'713609',ok:false},tour:{id:'713611',ok:true}},
+  {id:'1662986',country:'DE',floor:{id:'711319',ok:false}},
+  {id:'1663627',country:'BE',floor:{id:'713644',ok:false}},
+  {id:'1662274',country:'NL',photo:{id:'709069',ok:false}},
+  {id:'1661900',country:'BE',photo:{id:'808201',ok:true},floor:{id:'808199',ok:true},tour:{id:'808203',ok:true},vid:{id:'808202',ok:false}},
+  {id:'1661850',country:'DE',photo:{id:'708050',ok:true},floor:{id:'708048',ok:true}},
+  {id:'1658538',country:'NL',photo:{id:'700100',ok:false}},
+  {id:'1658411',country:'BE',floor:{id:'700200',ok:true},vid:{id:'700201',ok:false}},
+  {id:'1658236',country:'NL',photo:{id:'700300',ok:true},floor:{id:'700301',ok:true},tour:{id:'700302',ok:true}},
+];
+
+const BREACH_RAW = [
+  {id:'1663616',country:'NL',prod:'Floorplanner',created:'2026-06-15',upload:'2026-06-16 08:30',deadline:'2026-06-16 09:00',lt:'31h',sla:24,rev:0,reason:'lt'},
+  {id:'1662862',country:'BE',prod:'Photography', created:'2026-06-15',upload:'2026-06-16 10:00',deadline:'2026-06-16 09:00',lt:'28h',sla:24,rev:1,reason:'both'},
+  {id:'1662274',country:'NL',prod:'Photography', created:'2026-06-14',upload:'2026-06-16 12:00',deadline:'2026-06-15 14:00',lt:'38h',sla:24,rev:0,reason:'lt'},
+  {id:'1663627',country:'NL',prod:'Floorplanner',created:'2026-06-16',upload:'—',             deadline:'2026-06-17 09:00',lt:'9h', sla:24,rev:1,reason:'ftr'},
+  {id:'1662986',country:'DE',prod:'360 tour',    created:'2026-06-15',upload:'—',             deadline:'2026-06-16 09:00',lt:'22h',sla:24,rev:1,reason:'ftr'},
+  {id:'1661900',country:'BE',prod:'CAD Report',  created:'2026-06-13',upload:'2026-06-16 08:00',deadline:'2026-06-15 09:00',lt:'61h',sla:54,rev:1,reason:'both'},
+  {id:'1658538',country:'NL',prod:'Photography', created:'2026-06-10',upload:'2026-06-11 15:00',deadline:'2026-06-11 09:00',lt:'29h',sla:24,rev:0,reason:'lt'},
+  {id:'1658411',country:'BE',prod:'Video',       created:'2026-06-10',upload:'2026-06-11 10:00',deadline:'2026-06-11 09:00',lt:'25h',sla:24,rev:1,reason:'both'},
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let activeLand = 'ALL';
+let activeProds = new Set(PROD_CFG.map(p => p.key));
+let charts = {};
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const n   = v => typeof v === 'number' ? Math.round(v).toLocaleString('en') : (v || '—');
+const pct = (a, b) => b ? Math.round(a / b * 1000) / 10 : 0;
+const getSla = key => CFG.sla[key] || PROD_CFG.find(p => p.key === key)?.sla || 24;
+
+function pb(p) {
+  const t = CFG.target;
+  return `<span class="b ${p >= t ? 'bg' : p >= (t-10) ? 'ba' : 'br'}">${p.toFixed(1)}%</span>`;
+}
+function vsDelta(p) {
+  const d = (p - CFG.target).toFixed(1);
+  return d >= 0
+    ? `<span style="color:#1a6b35;font-weight:600">+${d}%</span>`
+    : `<span style="color:var(--zr);font-weight:600">${d}%</span>`;
+}
+function breachLabel(r) {
+  if (r==='lt')   return '<span class="b ba">Lead time</span>';
+  if (r==='ftr')  return '<span class="b ba">FTR failure</span>';
+  if (r==='both') return '<span class="b br">LT + FTR</span>';
+  return '—';
+}
+
+// ─── FILTER ──────────────────────────────────────────────────────────────────
+function filterCountry(arr, field='country') {
+  if (activeLand === 'ALL') return arr;
+  return arr.filter(r => r[field] === activeLand);
+}
+function filterProds(arr, field='key') {
+  return arr.filter(r => activeProds.has(r[field]));
+}
+
+// ─── KPI ─────────────────────────────────────────────────────────────────────
+function renderKPI() {
+  const daily  = DAILY_RAW;
+  const totOrd = daily.reduce((s,r) => s+r.ordTot,  0);
+  const delOrd = daily.reduce((s,r) => s+r.ordDel,  0);
+  const onOrd  = daily.reduce((s,r) => s+r.ordOn,   0);
+  const totPr  = daily.reduce((s,r) => s+r.prodTot, 0);
+  const delPr  = daily.reduce((s,r) => s+r.prodDel, 0);
+  const onPr   = daily.reduce((s,r) => s+r.prodOn,  0);
+  const brCount= BREACH_RAW.length;
+  const prog   = totOrd - delOrd;
+  const progPr = totPr  - delPr;
+
+  document.getElementById('k-ord-tot').textContent  = n(totOrd);
+  document.getElementById('kd-ord-tot').textContent = MTD_MONTH + ' ' + MTD_YEAR;
+  document.getElementById('k-ord-del').textContent  = n(delOrd);
+  document.getElementById('kd-ord-del').textContent = pct(delOrd,totOrd).toFixed(1)+'% of orders';
+  document.getElementById('k-ord-prog').textContent = n(prog);
+  document.getElementById('kd-ord-prog').textContent= pct(prog,totOrd).toFixed(1)+'% still open';
+  document.getElementById('k-ord-on').textContent   = n(onOrd);
+  document.getElementById('kd-ord-on').className    = 'kdelta '+(pct(onOrd,delOrd)>=CFG.target?'up':'dn');
+  document.getElementById('kd-ord-on').textContent  = pct(onOrd,delOrd).toFixed(1)+'% — target '+CFG.target+'%';
+  document.getElementById('k-prod-tot').textContent = n(totPr);
+  document.getElementById('kd-prod-tot').textContent= activeProds.size+' product types';
+  document.getElementById('k-prod-del').textContent = n(delPr);
+  document.getElementById('kd-prod-del').textContent= pct(delPr,totPr).toFixed(1)+'% of productions';
+  document.getElementById('k-prod-prog').textContent= n(progPr);
+  document.getElementById('kd-prod-prog').textContent=pct(progPr,totPr).toFixed(1)+'% still open';
+  document.getElementById('k-breach').textContent   = n(brCount);
+  document.getElementById('kd-breach').textContent  = pct(brCount,delPr).toFixed(1)+'% breach rate';
+  document.getElementById('breachCount').textContent= n(brCount);
+}
+
+// ─── EXTERNAL TOOLTIP ────────────────────────────────────────────────────────
+function getTooltipEl() {
+  let el = document.getElementById('zTooltip');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'zTooltip';
+    el.style.cssText='position:fixed;z-index:9999;pointer-events:none;background:rgba(15,25,50,.94);color:#fff;border-radius:10px;padding:12px 14px;font-size:11px;line-height:1.7;min-width:210px;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:opacity .15s;opacity:0';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+function externalTooltip(context) {
+  const {chart, tooltip} = context;
+  const el = getTooltipEl();
+  if (tooltip.opacity === 0) { el.style.opacity='0'; return; }
+  const i  = tooltip.dataPoints[0].dataIndex;
+  const r  = DAILY_RAW[i];
+  if (!r) return;
+  const oOnP = pct(r.ordOn, r.ordDel);
+  const pOnP = pct(r.prodOn, r.prodDel);
+  const oBr  = r.ordDel - r.ordOn;
+  const pBr  = r.prodDel - r.prodOn;
+
+  const row=(lbl,val,col,sub)=>
+    `<div style="display:flex;justify-content:space-between;gap:16px">` +
+    `<span style="color:rgba(255,255,255,.6)">${lbl}</span>` +
+    `<span style="color:${col||'#fff'};font-weight:500">${n(Math.round(val))}${sub?` <span style="color:rgba(255,255,255,.4);font-size:10px">(${sub})</span>`:''}</span>` +
+    `</div>`;
+
+  el.innerHTML =
+    `<div style="font-weight:600;font-size:12px;margin-bottom:6px">${r.d}</div>`+
+    `<div style="color:rgba(255,255,255,.3);font-size:10px;margin-bottom:5px">───────────────────</div>`+
+    `<div style="color:#7ec8f4;font-weight:600;margin-bottom:2px">📦 Orders</div>`+
+    row('Total',     r.ordTot,'') +
+    row('Delivered', r.ordDel,'') +
+    row('In progress',r.ordTot-r.ordDel,'#EF9F27') +
+    row('On target', r.ordOn,'#2FC974',oOnP.toFixed(1)+'%') +
+    row('Breach',    oBr,'#E24B4A',pct(oBr,r.ordDel).toFixed(1)+'%') +
+    `<div style="color:rgba(255,255,255,.3);font-size:10px;margin:5px 0">───────────────────</div>`+
+    `<div style="color:#6ee8a8;font-weight:600;margin-bottom:2px">🔧 Productions</div>`+
+    row('Total',     r.prodTot,'') +
+    row('Delivered', r.prodDel,'') +
+    row('In progress',r.prodTot-r.prodDel,'#EF9F27') +
+    row('On target', r.prodOn,'#2FC974',pOnP.toFixed(1)+'%') +
+    row('Breach LT', r.lt,'#EF9F27') +
+    row('Breach FTR',r.ftr,'#EF9F27') +
+    row('Breach both',r.both,'#E24B4A');
+
+  const rect = chart.canvas.getBoundingClientRect();
+  const x = rect.left + tooltip.caretX;
+  const y = rect.top  + tooltip.caretY;
+  const w = 230;
+  el.style.left = (x+w+16>window.innerWidth ? x-w-12 : x+12)+'px';
+  el.style.top  = Math.max(8, y-80)+'px';
+  el.style.opacity = '1';
+}
+
+// ─── MAIN CHART ──────────────────────────────────────────────────────────────
+function buildMainChart() {
+  const rows   = [...DAILY_RAW].reverse(); // chronological
+  const labels = rows.map(r => r.d.slice(5));
+  const vols   = rows.map(r => r.ordTot);
+  const oPs    = rows.map(r => pct(r.ordOn, r.ordDel));
+  const pPs    = rows.map(r => pct(r.prodOn, r.prodDel));
+  const t      = CFG.target;
+
+  document.getElementById('tgtLegend').textContent = t+'%';
+
+  if (charts.main) charts.main.destroy();
+  const canvas = document.getElementById('mainChart');
+  canvas.onmouseleave = () => { const el=getTooltipEl(); if(el) el.style.opacity='0'; };
+
+  charts.main = new Chart(canvas, {
+    data:{labels,datasets:[
+      {type:'bar',  label:'Order volume',           data:vols,backgroundColor:'rgba(31,128,240,.13)',borderColor:'rgba(31,128,240,.3)',borderWidth:1,yAxisID:'yVol',order:4,borderRadius:3,borderSkipped:false},
+      {type:'line', label:'Orders on target %',     data:oPs, borderColor:'#1F80F0',borderWidth:2.5,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false,pointBackgroundColor:'#1F80F0',yAxisID:'yPct',order:1},
+      {type:'line', label:'Productions on target %',data:pPs, borderColor:'#2FC974',borderWidth:2.5,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false,pointBackgroundColor:'#2FC974',yAxisID:'yPct',order:2},
+      {type:'line', label:'Target',                 data:rows.map(()=>t),borderColor:'#1F2E4A',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false,yAxisID:'yPct',order:3},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{enabled:false,external:externalTooltip}},
+      scales:{
+        x:{ticks:{font:{size:10},color:'#888',autoSkip:false,maxRotation:45},grid:{display:false}},
+        yPct:{position:'left',min:0,max:100,ticks:{font:{size:10},color:'#888',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.05)'}},
+        yVol:{position:'right',beginAtZero:true,ticks:{font:{size:10},color:'rgba(31,128,240,.45)',callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{display:false}},
+      }
+    }
+  });
+}
+
+// ─── BREACH DONUT ────────────────────────────────────────────────────────────
+function buildBreachDonut() {
+  const lt   = DAILY_RAW.reduce((s,r)=>s+r.lt,  0);
+  const ftr  = DAILY_RAW.reduce((s,r)=>s+r.ftr, 0);
+  const both = DAILY_RAW.reduce((s,r)=>s+r.both,0);
+  const on   = DAILY_RAW.reduce((s,r)=>s+r.prodOn,0);
+  const tot  = DAILY_RAW.reduce((s,r)=>s+r.prodTot,0);
+
+  if (charts.breach) charts.breach.destroy();
+  charts.breach = new Chart(document.getElementById('breachChart'), {
+    type:'doughnut',
+    data:{labels:['Lead time only','FTR only','LT + FTR','On target'],
+      datasets:[{data:[lt,ftr,both,on],backgroundColor:['#EF9F27','#1F80F0','#E24B4A','#2FC974'],borderWidth:2,borderColor:'#fff'}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12,padding:10}},
+        tooltip:{callbacks:{label:c=>`${c.label}: ${n(c.parsed)} (${pct(c.parsed,tot).toFixed(1)}%)`}}
+      }
+    }
+  });
+}
+
+// ─── DAILY TABLE ─────────────────────────────────────────────────────────────
+function renderDaily() {
+  const today = new Date().toISOString().slice(0,10);
+  let tOrd=0,tDel=0,tOn=0,tProd=0,tPDel=0,tPOn=0,tLt=0,tFtr=0,tBoth=0;
+
+  document.getElementById('dailyBody').innerHTML = DAILY_RAW.map(r => {
+    const isToday = r.d === today;
+    const ordP  = pct(r.ordOn, r.ordDel);
+    const prodP = pct(r.prodOn, r.prodDel);
+    const br    = r.ordDel - r.ordOn;
+    tOrd+=r.ordTot;tDel+=r.ordDel;tOn+=r.ordOn;
+    tProd+=r.prodTot;tPDel+=r.prodDel;tPOn+=r.prodOn;tLt+=r.lt;tFtr+=r.ftr;tBoth+=r.both;
+    return `<tr class="${isToday?'today-row':''}">
+      <td class="tl"><strong>${r.d.slice(5)}</strong>${isToday?'<span class="tbadge">TODAY</span>':''}</td>
+      <td>${n(r.ordTot)}</td>
+      <td><span class="b bg">${n(r.ordDel)}</span></td>
+      <td>${r.ordTot-r.ordDel>0?`<span class="b bo">${n(r.ordTot-r.ordDel)}</span>`:'—'}</td>
+      <td>${pb(ordP)}</td>
+      <td>${br>0?`<span class="b br">${n(br)}</span>`:'—'}</td>
+      <td>${n(r.prodTot)}</td>
+      <td><span class="b bg">${n(r.prodDel)}</span></td>
+      <td>${pb(prodP)}</td>
+      <td>${r.lt>0?`<span class="b ba">${n(r.lt)}</span>`:'—'}</td>
+      <td>${r.ftr>0?`<span class="b ba">${n(r.ftr)}</span>`:'—'}</td>
+      <td>${r.both>0?`<span class="b br">${n(r.both)}</span>`:'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const tBr=tLt+tFtr+tBoth;
+  document.getElementById('dailyFoot').innerHTML = `<tr class="tfoot">
+    <td class="tl">MTD total</td>
+    <td>${n(tOrd)}</td><td>${n(tDel)}</td><td>${n(tOrd-tDel)}</td>
+    <td>${pb(pct(tOn,tDel))}</td><td>${n(tDel-tOn)}</td>
+    <td>${n(tProd)}</td><td>${n(tPDel)}</td>
+    <td>${pb(pct(tPOn,tPDel))}</td>
+    <td>${n(tLt)}</td><td>${n(tFtr)}</td><td>${n(tBoth)}</td>
+  </tr>`;
+}
+
+// ─── PRODUCTS ────────────────────────────────────────────────────────────────
+function renderProducts() {
+  const rows = filterProds(PRODUCTS_RAW);
+  let tOrdT=0,tOrdD=0,tOrdOn=0,tProd=0,tProdD=0,tProdOn=0,tLt=0,tFtr=0,tBoth=0;
+
+  document.getElementById('productBody').innerHTML = rows.map(p => {
+    const slaH = getSla(p.key);
+    const oOnP = pct(p.ordOn, p.ordDel);
+    const pOnP = pct(p.prodOn, p.prodDel);
+    const oProg= p.ordTot-p.ordDel;
+    const pProg= p.prodTot-p.prodDel;
+    const inPct= Math.round(p.prodOn/Math.max(p.prodDel,1)*100);
+    tOrdT+=p.ordTot;tOrdD+=p.ordDel;tOrdOn+=p.ordOn;
+    tProd+=p.prodTot;tProdD+=p.prodDel;tProdOn+=p.prodOn;tLt+=p.lt;tFtr+=p.ftr;tBoth+=p.both;
+    return `<tr>
+      <td class="tl" style="font-weight:500">${p.key}</td>
+      <td style="text-align:center">${slaH}h</td>
+      <td style="border-left:2px solid var(--zborder)">${n(p.ordTot)}</td>
+      <td><span class="b bg">${n(p.ordDel)}</span></td>
+      <td>${oProg>0?`<span class="b bo">${n(oProg)}</span>`:'—'}</td>
+      <td>${pb(oOnP)}</td>
+      <td class="col-sep"></td>
+      <td>${n(p.prodTot)}</td>
+      <td><span class="b bg">${n(p.prodDel)}</span></td>
+      <td>${pProg>0?`<span class="b bo">${n(pProg)}</span>`:'—'}</td>
+      <td>${pb(pOnP)}</td>
+      <td>${p.lt?`<span class="b ba">${n(p.lt)}</span>`:'—'}</td>
+      <td>${p.ftr?`<span class="b ba">${n(p.ftr)}</span>`:'—'}</td>
+      <td>${p.both?`<span class="b br">${n(p.both)}</span>`:'—'}</td>
+      <td><div class="scell"><div class="sbar"><div class="sin" style="width:${inPct}%"></div><div class="sout" style="width:${100-inPct}%"></div></div></div></td>
+    </tr>`;
+  }).join('');
+
+  const tBr=tLt+tFtr+tBoth;
+  document.getElementById('productFoot').innerHTML=`<tr class="tfoot">
+    <td class="tl">Total</td><td>—</td>
+    <td>${n(tOrdT)}</td><td>${n(tOrdD)}</td><td>${n(tOrdT-tOrdD)}</td><td>${pb(pct(tOrdOn,tOrdD))}</td>
+    <td class="col-sep"></td>
+    <td>${n(tProd)}</td><td>${n(tProdD)}</td><td>${n(tProd-tProdD)}</td><td>${pb(pct(tProdOn,tProdD))}</td>
+    <td>${n(tLt)}</td><td>${n(tFtr)}</td><td>${n(tBoth)}</td><td></td>
+  </tr>`;
+}
+
+// ─── ORDER DETAIL ────────────────────────────────────────────────────────────
+const PROD_KEYS = [
+  ['photo','Photography'],['floor','Floorplanner'],['meas','Measurement'],
+  ['cad','CAD Report'],['vid','Video'],['soc','Social media video'],
+  ['reel','Social Media Reel'],['tour','360 tour'],['drone','Drone photography'],
+  ['mat','Matterport'],['kuula','KuulaTour'],['dvid','Drone video'],
+  ['art','Artist impression'],['eve','Evening impression'],['wofl','WOFL']
+];
+
+function renderOrders(filter) {
+  let rows = filterCountry(ORDERS_RAW);
+  if (filter) rows = rows.filter(r => String(r.id).includes(filter));
+
+  document.getElementById('orderBody').innerHTML = rows.map(o => {
+    const prodVals = PROD_KEYS.map(([k]) => o[k]);
+    const allOk   = prodVals.filter(Boolean).every(p => p.ok);
+    const cells   = PROD_KEYS.map(([k]) => {
+      const v = o[k];
+      if (!v) return `<td style="text-align:center;color:#ccc">—</td>`;
+      return `<td class="${v.ok?'cg':'cr'}" style="text-align:center">
+        <a class="plink" href="https://zone.zibber.nl/production/${v.id}" target="_blank">${v.id}</a>
+        <div style="font-size:10px;color:var(--zm)">${v.ok?'✓ on target':'✗ breach'}</div>
+      </td>`;
+    }).join('');
+    return `<tr>
+      <td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/${o.id}" target="_blank">${o.id}</a></td>
+      <td class="tl"><span class="b bb">${o.country}</span></td>
+      <td class="tl"><span class="b ${allOk?'bg':'br'}">${allOk?'On target':'Breach'}</span></td>
+      <td class="tl"><div class="elinks">
+        <a class="elink" href="https://zone.zibber.nl/orders/${o.id}" target="_blank">Zone</a>
+        <a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~${o.id}" target="_blank">JOI</a>
+        <a class="elink" href="https://stream.bright-river.com/all/find/${o.id}" target="_blank">STREAM</a>
+      </div></td>
+      ${cells}
+    </tr>`;
+  }).join('');
+}
+
+// ─── BREACH ──────────────────────────────────────────────────────────────────
+function renderBreach(filter) {
+  let rows = filterCountry(BREACH_RAW);
+  if (filter) rows = rows.filter(r =>
+    String(r.id).includes(filter) || r.prod.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  document.getElementById('breachBody').innerHTML = rows.map(o => {
+    const slaH  = getSla(o.prod);
+    const ltNum = parseInt(o.lt);
+    const ltOver= !isNaN(ltNum) && ltNum > slaH;
+    return `<tr>
+      <td class="tl"><a class="olink" href="https://zone.zibber.nl/orders/${o.id}" target="_blank">${o.id}</a></td>
+      <td style="text-align:center"><span class="b bb">${o.country}</span></td>
+      <td>${o.prod}</td>
+      <td style="text-align:center">${o.created}</td>
+      <td style="text-align:center">${o.upload}</td>
+      <td style="text-align:center">${o.deadline}</td>
+      <td style="text-align:center;font-weight:600;color:${ltOver?'var(--zr)':'var(--zt)'}">${o.lt}</td>
+      <td style="text-align:center">${slaH}h</td>
+      <td style="text-align:center">${o.rev}</td>
+      <td style="text-align:center">${breachLabel(o.reason)}</td>
+      <td class="tl"><div class="elinks">
+        <a class="elink" href="https://zone.zibber.nl/orders/${o.id}" target="_blank">Zone</a>
+        <a class="elink" href="https://brre.atlassian.net/issues/?jql=%22relatesToReferenceId[Short text]%22~${o.id}" target="_blank">JOI</a>
+        <a class="elink" href="https://stream.bright-river.com/all/find/${o.id}" target="_blank">STREAM</a>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── PERFORMANCE ─────────────────────────────────────────────────────────────
+function renderPerf() {
+  const t   = CFG.target;
+  const rows= filterProds(PRODUCTS_RAW);
+  document.getElementById('targetLabel').textContent = t+'%';
+
+  // Perf chart
+  if (charts.perf) charts.perf.destroy();
+  const oPs = rows.map(p => pct(p.ordOn, p.ordDel));
+  const pPs = rows.map(p => pct(p.prodOn, p.prodDel));
+  charts.perf = new Chart(document.getElementById('perfChart'), {
+    type:'bar',
+    data:{labels:rows.map(p=>p.key.substring(0,12)),datasets:[
+      {label:'Orders on target %',data:oPs,backgroundColor:oPs.map(v=>v>=t?'rgba(31,128,240,.8)':v>=(t-10)?'rgba(239,159,39,.8)':'rgba(226,75,74,.8)'),borderRadius:4,borderSkipped:false},
+      {label:'Prod on target %',  data:pPs,backgroundColor:pPs.map(v=>v>=t?'rgba(47,201,116,.7)':v>=(t-10)?'rgba(239,159,39,.5)':'rgba(226,75,74,.5)'),borderRadius:4,borderSkipped:false},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(1)}%`}}},
+      scales:{x:{ticks:{font:{size:10},color:'#888'},grid:{display:false}},y:{min:0,max:100,ticks:{font:{size:10},color:'#888',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.05)'}}}
+    }
+  });
+
+  // Performance cards
+  document.getElementById('perfGrid').innerHTML = rows.map(p => {
+    const oOnP = pct(p.ordOn, p.ordDel);
+    const pOnP = pct(p.prodOn, p.prodDel);
+    const cls  = pOnP>=t?'ok':pOnP>=(t-10)?'warn':'fail';
+    const barC = pOnP>=t?'var(--zg)':pOnP>=(t-10)?'var(--za)':'var(--zr)';
+    return `<div class="pcard ${cls}">
+      <div class="pcard-name">${p.key} <span class="b ${pOnP>=t?'bg':pOnP>=(t-10)?'ba':'br'}">${pOnP.toFixed(1)}%</span></div>
+      <div class="pstats">
+        <div class="pst"><div class="pst-lbl">Orders</div><div class="pst-val">${n(p.ordTot)}</div></div>
+        <div class="pst"><div class="pst-lbl">Orders on target</div><div class="pst-val ${oOnP>=t?'ok':'fail'}">${n(p.ordOn)} (${oOnP.toFixed(0)}%)</div></div>
+        <div class="pst"><div class="pst-lbl">Breach LT</div><div class="pst-val ${p.lt>0?'fail':'ok'}">${n(p.lt)}</div></div>
+        <div class="pst"><div class="pst-lbl">Breach FTR</div><div class="pst-val ${p.ftr>0?'fail':'ok'}">${n(p.ftr)}</div></div>
+      </div>
+      <div class="pbar-wrap">
+        <div class="pbar-labels"><span>Productions on target</span><span>${t}% target</span></div>
+        <div class="pbar">
+          <div class="pbar-fill" style="width:${Math.min(pOnP,100)}%;background:${barC}"></div>
+          <div class="pbar-target" style="left:${Math.min(t,100)}%"></div>
+        </div>
+        <div class="pbar-note" style="color:${pOnP>=t?'#1a6b35':'var(--zr)'}">
+          ${pOnP>=t?'✓ On target':'✗ '+Math.abs(pOnP-t).toFixed(1)+'% below target'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Summary table
+  document.getElementById('perfBody').innerHTML = rows.map(p => {
+    const oOnP = pct(p.ordOn, p.ordDel);
+    const pOnP = pct(p.prodOn, p.prodDel);
+    const cls  = pOnP>=t?'ok':pOnP>=(t-10)?'warn':'fail';
+    return `<tr>
+      <td class="tl" style="font-weight:500">${p.key}</td>
+      <td style="text-align:center">${t}%</td>
+      <td style="border-left:2px solid var(--zborder)">${n(p.ordTot)}</td>
+      <td><span class="b bg">${n(p.ordOn)}</span></td>
+      <td>${pb(oOnP)}</td>
+      <td class="col-sep"></td>
+      <td>${n(p.prodTot)}</td>
+      <td><span class="b bg">${n(p.prodOn)}</span></td>
+      <td>${pb(pOnP)}</td>
+      <td>${vsDelta(pOnP)}</td>
+      <td><span class="b ${cls==='ok'?'bg':cls==='warn'?'ba':'br'}">${cls==='ok'?'On target':cls==='warn'?'At risk':'Below target'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── CHIPS ───────────────────────────────────────────────────────────────────
+function buildChips() {
+  document.getElementById('prodChips').innerHTML = PROD_CFG.map(p =>
+    `<span class="chip active" onclick="toggleChip(this,'${p.key.replace(/'/g,"\\'")}') ">${p.key}</span>`
+  ).join('');
+  activeProds = new Set(PROD_CFG.map(p => p.key));
+}
+function toggleChip(el, key) {
+  el.classList.toggle('active');
+  if (activeProds.has(key)) activeProds.delete(key); else activeProds.add(key);
+  renderAll();
+}
+
+// ─── CONTROLS ────────────────────────────────────────────────────────────────
+function setLand(btn, v) {
+  document.querySelectorAll('.lbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeLand = v;
+  renderAll();
+}
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((el,i) =>
+    el.classList.toggle('active', ['overview','products','orders','breach','perf'][i]===t)
+  );
+  document.querySelectorAll('.panel').forEach(p => { p.style.display=''; p.classList.remove('active'); });
+  document.getElementById('panel-'+t).classList.add('active');
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+function buildSettingsRows() {
+  document.getElementById('globalTarget').value = CFG.target;
+  document.getElementById('settingsRows').innerHTML = PROD_CFG.map(p => `
+    <div class="sp-row">
+      <span class="sp-name">${p.key}</span>
+      <div style="display:flex;align-items:center;gap:5px">
+        <input class="sp-inp" type="number" id="sla_${p.key.replace(/\s/g,'_').replace(/\./g,'')}" value="${CFG.sla[p.key]||p.sla}" min="1" max="240">
+        <span style="font-size:11px;color:var(--zm)">hrs</span>
+      </div>
+    </div>`).join('');
+}
+function openSettings()  { buildSettingsRows(); document.getElementById('settingsOverlay').classList.add('open'); }
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
+function saveSettings()  {
+  CFG.target = parseInt(document.getElementById('globalTarget').value)||95;
+  PROD_CFG.forEach(p => {
+    const id = 'sla_'+p.key.replace(/\s/g,'_').replace(/\./g,'');
+    const el = document.getElementById(id);
+    if (el) CFG.sla[p.key] = parseInt(el.value)||p.sla;
+  });
+  localStorage.setItem('zbV5Cfg', JSON.stringify(CFG));
+  closeSettings();
+  renderAll();
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────────────────────
+function renderAll() {
+  renderKPI();
+  buildMainChart();
+  buildBreachDonut();
+  renderDaily();
+  renderProducts();
+  renderOrders();
+  renderBreach();
+  renderPerf();
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+document.getElementById('mtdBadge').textContent   = monthNames[NOW.getMonth()]+' MTD';
+document.getElementById('monthLabel').textContent = monthNames[NOW.getMonth()]+' '+MTD_YEAR;
+document.getElementById('lastUpdated').textContent= NOW.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+document.getElementById('footerDate').textContent = NOW.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+buildChips();
+renderAll();
+</script>
+</body>
+</html>
