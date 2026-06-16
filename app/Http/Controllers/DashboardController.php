@@ -51,6 +51,7 @@ class DashboardController
     // ── MTD endpoint ──────────────────────────────────────────────────────────
     public function mtd(Request $request)
     {
+        $this->setDatabase();
         $country  = $request->get('country', 'ALL');
         $dateFrom = now()->startOfMonth()->toDateTimeString();
         $dateTo   = now()->toDateTimeString();
