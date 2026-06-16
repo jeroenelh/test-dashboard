@@ -50,8 +50,8 @@ class DashboardController
     {
         $params = ['date_from' => $from, 'date_to' => $to];
 
-        $withAppt    = DB::select($this->queryWith(), $params);
-        $withoutAppt = DB::select($this->queryWithout(), $params);
+        $withAppt    = DB::connection('live')->select($this->queryWith(), $params);
+        $withoutAppt = DB::connection('live')->select($this->queryWithout(), $params);
 
         $rows = collect(array_merge($withAppt, $withoutAppt))->map(function ($r) {
             $ftr  = $r->revisions == 0;
