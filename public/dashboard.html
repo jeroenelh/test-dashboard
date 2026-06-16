@@ -1172,7 +1172,7 @@
     // ─── DATA LOADING ─────────────────────────────────────────────────────────────
     async function loadData(){
         const params=new URLSearchParams({country:activeLand});
-        const res=await fetch(`/api/dashboard/mtd?${params}`);
+        const res=await fetch(`/dashboard/mtd?${params}`);
         const data=await res.json();
         DAILY_RAW    = data.daily;
         PRODUCTS_RAW = data.products;
